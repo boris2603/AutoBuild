@@ -13,7 +13,11 @@ public class ZNIDescription {
 
     private void ParceZNIDescriptionFile(List<String> lines) {
         for(String line : lines) {
-            String[] Items = line.split(";");
+            String[] Items = line.split(",");
+            if (Items.length<5)
+            {
+                Items = line.split(";");
+            };
 
             if (Items.length>=5) {
                 ZNIDescriptionItem hasItem = new ZNIDescriptionItem(Items[0], Items[2], Items[1], Items[4]);
