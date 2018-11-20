@@ -7,13 +7,15 @@ public class BuildListItem {
     String ZNI;
     String Distributive;
     String URL;
+    String JiraIssue;
     BuildListItemType Type;
 
 
-    public BuildListItem(BuildListItemType type, String ZNI, String distributive, String URL) {
+    public BuildListItem(BuildListItemType type, String ZNI, String distributive, String URL, String JiraIssue) {
         this.ZNI = ZNI;
         Distributive = distributive;
         this.URL = URL;
         Type = type;
+        this.JiraIssue=JiraIssue;
     }
 }
