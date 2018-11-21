@@ -2,6 +2,7 @@ package com.company;
 import com.company.FileProvider;
 import sun.util.locale.provider.TimeZoneNameProviderImpl;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -14,11 +15,15 @@ public class ReleaseErrors {
         ParceErrors(FileProvider.LoadFile(ReleaseErrorsPath));
     };
 
+
+    public Collection<String> getItems() {return ReleaseErrorsItems.keySet();}
+
     // Проверим что по ЗНИ есть ошибки
     boolean ZNIHasError(String ZNI)
     {
         return !ReleaseErrorsItems.get(ZNI).isEmpty();
     }
+
 
     // Загрузим объекты с ошибками
     void ParceErrors(List<String> lines)

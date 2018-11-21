@@ -38,6 +38,7 @@ public class ReleaseItem {
 
     public void setJiraIssue(String jiraIssue) { JiraIssue = jiraIssue; }
 
+    public ArrayList<String> getDependenceList() {return DependenceList; };
 
     ReleaseItem(String sZNI, String sDeveloper, String sDistributive) {
         ZNI = sZNI;

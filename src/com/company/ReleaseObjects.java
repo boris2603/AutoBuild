@@ -8,7 +8,7 @@ import java.util.function.Consumer;
 
 
 public class ReleaseObjects {
-    public HashMap<String,ReleaseItem> ReleaseItems;
+    private HashMap<String,ReleaseItem> ReleaseItems;
 
 
     ReleaseObjects(String ReleasePath, String ReleaseURLPath)
@@ -18,6 +18,11 @@ public class ReleaseObjects {
         ParceURL(FileProvider.LoadFile(ReleaseURLPath));
     }
 
+    public Collection<ReleaseItem> getITems() {return ReleaseItems.values(); };
+
+    public boolean containsZNI(String ZNI) {return ReleaseItems.containsKey(ZNI);};
+
+    public ReleaseItem getZNI(String ZNI) {return ReleaseItems.get(ZNI);};
 
     // Проверяем что ЗНИ есть в релизе
     boolean ZNIExistInRelease(String ZNI)

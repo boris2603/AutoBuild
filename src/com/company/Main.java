@@ -15,7 +15,7 @@ public class Main {
     public static void main(String[] args) {
 	// write your code here
         HashMap<String,BuildListItem> BuildItemsList=new HashMap<>();
-        BuildListItem BuildItem=new BuildListItem(BuildListItem.BuildListItemType.newZNI,"","","","");
+        BuildListItem BuildItem=new BuildListItem();
         String NewDistribPath = "";
 
 
@@ -48,40 +48,65 @@ public class Main {
         boolean fullLoaderFlag=false;
         if (args.length>5) fullLoaderFlag=args[5].equals("-f");
 
+        //Флаг расширенной диагностики в консоли
+       boolean debugFlag=false;
+       if (fullLoaderFlag)
+           if (args.length>6) debugFlag=args[6].equals("-d");
+       else
+           if (args.length==5) debugFlag=args[5].equals("-d");
+
         // Сравнение релизов
 
         // ЗНИ, тип, ссылка, дистрибутив
-        for (ReleaseItem Item : ReleaseNew.ReleaseItems.values())
+        for (ReleaseItem Item : ReleaseNew.getITems())
         {
-            if (!ReleaseOld.ReleaseItems.containsKey(Item.getZNI()))
+            if (!ReleaseOld.containsZNI(Item.getZNI()))
             {
                 // Новое ЗНИ
-                BuildItem=new BuildListItem( BuildListItem.BuildListItemType.newZNI, Item.getZNI(), Item.getDistributive(), Item.getULR(), Item.getJiraIssue());
+                BuildItem=new BuildListItem( BuildListItem.BuildListItemType.newZNI, Item);
                 BuildItemsList.put(Item.getZNI(),BuildItem);
             }
             else
             {
-                if (ReleaseOld.ReleaseItems.get(Item.getZNI()).getDistributive().equals(Item.getDistributive()))
+                if (ReleaseOld.getZNI(Item.getZNI()).getDistributive().equals(Item.getDistributive()))
                 {
                     // Без изменений
-                    BuildItem=new BuildListItem( BuildListItem.BuildListItemType.withoutChange, Item.getZNI(), Item.getDistributive(), Item.getULR(), Item.getJiraIssue());
+                    BuildItem=new BuildListItem( BuildListItem.BuildListItemType.withoutChange, Item);
                     BuildItemsList.put(Item.getZNI(),BuildItem);
                 }
                 else
                 {
                     // Новая версия
-                    BuildItem=new BuildListItem( BuildListItem.BuildListItemType.newVersion, Item.getZNI(), Item.getDistributive(), Item.getULR(), Item.getJiraIssue());
+                    BuildItem=new BuildListItem( BuildListItem.BuildListItemType.newVersion, Item);
                     BuildItemsList.put(Item.getZNI(),BuildItem);
                 }
 
             }
         }
 
-        for (String ReleaseError : ReleaseErr.ReleaseErrorsItems.keySet())
+        // Определить циклические зависимости по ЗНИ кандидатам в релизе
+        for (BuildListItem Item : BuildItemsList.values())
+        {
+            String BaseZNI = Item.getItem().getZNI();
+            for (String DepZNI : Item.getItem().getDependenceList())
+            {
+                if (BuildItemsList.containsKey(DepZNI)) {
+                    if (BuildItemsList.get(DepZNI).getItem().getDependenceList().contains(BaseZNI))
+                    {
+                        BuildItemsList.get(DepZNI).setType(BuildListItem.BuildListItemType.errCicleLinks, BaseZNI);
+                        Item.setType(BuildListItem.BuildListItemType.errCicleLinks, DepZNI);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Отметим ЗНИ которые имеют не разрешеннные пересечения или ошибки написания install.txt
+        for (String ReleaseError : ReleaseErr.getItems())
         {
             if (BuildItemsList.containsKey(ReleaseError))
             {
-                BuildItemsList.get(ReleaseError).Type=BuildListItem.BuildListItemType.hasError;
+                BuildItemsList.get(ReleaseError).setType(BuildListItem.BuildListItemType.hasError,"");
             }
         };
 
@@ -90,56 +115,62 @@ public class Main {
         String NewVersionReport="";
         String WithoutChangeReport="";
         String HasErrorReport="";
+        String HasLinkErrorReport="";
 
         ArrayList<String> HasErrorRemoveCmd=new ArrayList();
-        ArrayList<String> ChangeListNotes=new ArrayList();;
-        ArrayList<String> BuildURLList=new ArrayList<>();
-
         Date Now = new Date();
         SimpleDateFormat DateFormatter = new SimpleDateFormat("YYY-MM-dd");
         String ErrDistribStoragePath=Paths.get(NewDistribPath).getParent().toString()+File.separator+"ERR_BUILD_"+DateFormatter.format(Now).toString();
 
+        HasErrorRemoveCmd.add("@ECHO OFF");
+        HasErrorRemoveCmd.add("RD /S /Q "+ErrDistribStoragePath);
+        HasErrorRemoveCmd.add("MD "+ErrDistribStoragePath);
+
+        ArrayList<String> ChangeListNotes=new ArrayList();;
+        ArrayList<String> BuildURLList=new ArrayList<>();
+
 
         for (BuildListItem Item : BuildItemsList.values())
         {
-            String ReportString=Item.ZNI+" "+Item.URL;
-            switch (Item.Type) {
+            ReleaseItem releaseItem = Item.getItem();
+            String ReportString=releaseItem.getZNI()+" "+releaseItem.getULR();
+
+            switch (Item.getType()) {
                 case newZNI:
                     NewZNIReport = NewZNIReport + System.lineSeparator() + ReportString;
-                    BuildURLList.add(Item.ZNI+","+Item.JiraIssue+","+Item.URL);
+                    BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
                     break;
                 case newVersion:
                     NewVersionReport = NewVersionReport + System.lineSeparator() + ReportString;
-                    BuildURLList.add(Item.ZNI+","+Item.JiraIssue+","+Item.URL);
+                    BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
                     break;
                 case withoutChange:
                     WithoutChangeReport = WithoutChangeReport + System.lineSeparator() + ReportString;
                     if (fullLoaderFlag) {
-                        BuildURLList.add(Item.ZNI + "," + Item.JiraIssue + "," + Item.URL);
+                        BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
                     };
                     break;
                 case hasError:
-                    HasErrorReport=HasErrorReport+","+ Item.ZNI;
-                    if (HasErrorRemoveCmd.isEmpty())
-                    {
-                        HasErrorRemoveCmd.add("RD /S /Q "+ErrDistribStoragePath);
-                        HasErrorRemoveCmd.add("MD "+ErrDistribStoragePath);
-                    }
-                    HasErrorRemoveCmd.add("MOVE /Y "+NewDistribPath+ File.separator+Item.Distributive+".* "+ErrDistribStoragePath);
+                    HasErrorReport=HasErrorReport+","+ releaseItem.getZNI();
+                    HasErrorRemoveCmd.add("MOVE /Y "+NewDistribPath+ File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                     break;
+                case errCicleLinks:
+                    HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + Item.getItem().getZNI()+" сожержит цикличные ссылки в порядке установке с ЗНИ "+Item.getBuildError();
+                    HasErrorRemoveCmd.add("MOVE /Y "+NewDistribPath+ File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
             }
-            if (ZNIDescript.ZNIDescriptionList.containsKey(Item.ZNI)) {
-                ZNIDescriptionItem ZNIItem= ZNIDescript.ZNIDescriptionList.get(Item.ZNI);
+
+            // Формируем список ЗНИ с описанем
+            if (ZNIDescript.ZNIDescriptionList.containsKey(releaseItem.getZNI())) {
+                ZNIDescriptionItem ZNIItem= ZNIDescript.ZNIDescriptionList.get(releaseItem.getZNI());
                 ChangeListNotes.add(ZNIItem.ZNI + " "+ ZNIItem.Description+" "+ZNIItem.ConfigurationItem);
             }
             else
             {
                 System.out.print("Error ZNI description not found ");
-                System.out.println(Item.ZNI);
+                System.out.println(releaseItem.getZNI());
             }
 
         }
-
 
 
         System.out.println();
@@ -159,19 +190,29 @@ public class Main {
         System.out.println(HasErrorReport);
 
         System.out.println();
-        System.out.println("BAT для перемещения объектов:");
-        HasErrorRemoveCmd.forEach(System.out::println);
-        FileProvider.SaveFile(Paths.get(NewDistribPath,"makeBuild.bat").toString(), HasErrorRemoveCmd);
+        System.out.println("ЗНИ с ошибками порядка формирования релиза:");
+        System.out.println(HasLinkErrorReport);
 
         System.out.println();
-        System.out.println("Список измененй:");
-        ChangeListNotes.forEach(System.out::println);
-        FileProvider.SaveFile(Paths.get(NewDistribPath,"BuildNotes.txt").toString(), ChangeListNotes);
+        System.out.println("Порядок установки новых и измененнных ЗНИ:");
+        BuildBOrderList BuildOrder = new BuildBOrderList(BuildItemsList);
+        System.out.println(BuildOrder.getBuildList());
 
-        System.out.println();
-        System.out.println("Список ЗНИ для загрузки:");
-        BuildURLList.forEach(System.out::println);
-        FileProvider.SaveFile(Paths.get(NewDistribPath,"BuildURLList.csv").toString(), BuildURLList);
+        if (debugFlag) {
+            System.out.println();
+            System.out.println("BAT для перемещения объектов:");
+            HasErrorRemoveCmd.forEach(System.out::println);
 
+            System.out.println();
+            System.out.println("Список измененй:");
+            ChangeListNotes.forEach(System.out::println);
+
+            System.out.println();
+            System.out.println("Список ЗНИ для загрузки:");
+            BuildURLList.forEach(System.out::println);
+        }
+        FileProvider.SaveFile(Paths.get(NewDistribPath, "makeBuild.bat").toString(), HasErrorRemoveCmd);
+        FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildNotes.txt").toString(), ChangeListNotes);
+        FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildURLList.csv").toString(), BuildURLList);
     }
 }
