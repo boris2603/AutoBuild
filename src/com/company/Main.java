@@ -3,6 +3,7 @@ package com.company;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.HashMap;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -94,12 +95,14 @@ public class Main {
                 if (DepItem==null)
                 {
                     Item.setType(BuildListItem.BuildListItemType.errBuildLinks, DepZNI);
+                    ReleaseErr.registerError(BaseZNI," ссылается на ЗНИ "+DepZNI+" которой нет в сборке ");
                 }
                 else
                     if (DepItem.getItem().getDependenceList().contains(BaseZNI))
                     {
                         BuildItemsList.get(DepZNI).setType(BuildListItem.BuildListItemType.errCicleLinks, BaseZNI);
                         Item.setType(BuildListItem.BuildListItemType.errCicleLinks, DepZNI);
+                        ReleaseErr.registerError(BaseZNI," сожержит цикличные ссылки в порядке установке с ЗНИ "+DepZNI);
                         break;
                     }
             }
@@ -119,8 +122,10 @@ public class Main {
         {
             for (String ReleaseError : ReleaseErr.getItems())
             {
-                if (Item.getItem().getDependenceList().contains(ReleaseError))
+                if (Item.getItem().getDependenceList().contains(ReleaseError)) {
                     Item.setType(BuildListItem.BuildListItemType.errBuildLinks, ReleaseError);
+                    ReleaseErr.registerError(Item.getItem().getZNI()," ссылается на ЗНИ "+ReleaseError+" которой нет в сборке ");
+                }
             }
         }
 
@@ -189,8 +194,16 @@ public class Main {
                 System.out.print("Error ZNI description not found ");
                 System.out.println(releaseItem.getZNI());
             }
+            if (!releaseItem.getAlsoReleasedList().isEmpty())
+            {
+               for(String AlsoeleasedZNI : releaseItem.getAlsoReleasedList()) {
+                   ZNIDescriptionItem ZNIItem = ZNIDescript.ZNIDescriptionList.get(AlsoeleasedZNI);
+                   ChangeListNotes.add(ZNIItem.ZNI + " " + ZNIItem.Description + " " + ZNIItem.ConfigurationItem);
+               }
+            }
 
         }
+
 
 
         System.out.println();
@@ -236,5 +249,13 @@ public class Main {
         FileProvider.SaveFile(Paths.get(NewDistribPath, "makeBuild.bat").toString(), HasErrorRemoveCmd);
         FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildNotes.txt").toString(), ChangeListNotes);
         FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildURLList.csv").toString(), BuildURLList);
+        FileProvider.SaveFile(Paths.get(NewDistribPath, "ODMail.txt").toString(), ReleaseErr.getMailBody());
+
+        ArrayList<String> txtAddressList=new ArrayList<>();
+        for(String ErrItem : ReleaseErr.getItems())
+        {
+            BuildItemsList.get(ErrItem).getItem().getEmails().forEach(s->txtAddressList.add(s+";"));
+        }
+        FileProvider.SaveFile(Paths.get(NewDistribPath, "ODAddress.txt").toString(), txtAddressList);
     }
 }

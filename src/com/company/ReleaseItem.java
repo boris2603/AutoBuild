@@ -51,6 +51,7 @@ public class ReleaseItem {
         Distributive = sDistributive;
     }
 
+
     String getEmail(){
 
         String retval="";
@@ -58,6 +59,8 @@ public class ReleaseItem {
         this.eMailList.forEach(s->retval.concat(s).concat(";"));
         return retval;
     }
+
+    public ArrayList<String> getAlsoReleasedList() {return AlsoReleasedList;}
 
 
     // Добавление в список с контролем добаквки
