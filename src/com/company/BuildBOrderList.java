@@ -2,6 +2,7 @@ package com.company;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import com.company.BuildListItem.BuildListItemType;
 
 public class BuildBOrderList {
     private ArrayList<String> BOArray= new ArrayList();
@@ -12,14 +13,22 @@ public class BuildBOrderList {
         this.release = Release;
     };
 
-    public String getBuildList()
+    public String getBuildList(boolean fullLoaderFlag)
     {
         String BOListReport="";
 
+
+
         for(BuildListItem value : release.values())
         {
-          if ((value.getType()!=BuildListItem.BuildListItemType.errCicleLinks) && (value.getType()!=BuildListItem.BuildListItemType.hasError) && (value.getType()!=BuildListItem.BuildListItemType.withoutChange))
-                     BOArray.addAll(AddReleaseItem(value.getItem().getZNI()));
+          if ((value.getType()!=BuildListItemType.errCicleLinks) &&
+                  (value.getType()!=BuildListItemType.hasError) &&
+                  (value.getType()!=BuildListItemType.errBuildLinks))
+                    if (fullLoaderFlag)
+                            BOArray.addAll(AddReleaseItem(value.getItem().getZNI(),fullLoaderFlag));
+                    else {
+                        if (value.getType()!=BuildListItemType.withoutChange)
+                            BOArray.addAll(AddReleaseItem(value.getItem().getZNI(),fullLoaderFlag)); }
         }
 
         for (String item : BOArray)
@@ -29,15 +38,19 @@ public class BuildBOrderList {
         return BOListReport;
     }
 
-    private ArrayList<String> AddReleaseItem(String ZNI)
+    private ArrayList<String> AddReleaseItem(String ZNI,boolean fullLoaderFlag)
     {
         ArrayList<String> retVal = new ArrayList<>();
 
         if (release.containsKey(ZNI)) {
             for (String depZNI : release.get(ZNI).getItem().getDependenceList()) {
                 if (!BOArray.contains(depZNI))
-                    if (release.get(depZNI).getType()!=BuildListItem.BuildListItemType.withoutChange)
-                        retVal.addAll(AddReleaseItem(depZNI));
+                    if (fullLoaderFlag)
+                        retVal.addAll(AddReleaseItem(depZNI, fullLoaderFlag));
+                    else {
+                        if (release.get(depZNI).getType() != BuildListItemType.withoutChange)
+                            retVal.addAll(AddReleaseItem(depZNI, fullLoaderFlag));
+                    }
             }
             retVal.add(ZNI);
         }

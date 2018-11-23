@@ -38,4 +38,7 @@ public class ReleaseErrors {
                         ReleaseErrorsItems.put(items[1],items[0]);
         }
     }
+
+    // Сделать генератор отчета по релизу и списка адресов
+
 }

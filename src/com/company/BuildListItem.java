@@ -2,7 +2,7 @@ package com.company;
 
 public class BuildListItem {
 
-    public enum BuildListItemType {newZNI,newVersion,withoutChange,errCicleLinks,hasError};
+    public enum BuildListItemType {newZNI,newVersion,withoutChange,errCicleLinks,errBuildLinks,hasError};
 
     private ReleaseItem releaseItem;
     private BuildListItemType Type;

@@ -40,6 +40,8 @@ public class ReleaseItem {
 
     public ArrayList<String> getDependenceList() {return DependenceList; };
 
+    public ArrayList<String> getEmails() { return eMailList; }
+
     ReleaseItem(String sZNI, String sDeveloper, String sDistributive) {
         ZNI = sZNI;
         DependenceList = new ArrayList<String>();

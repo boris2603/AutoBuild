@@ -41,6 +41,7 @@ public class Main {
 
         // Загрузим описание ошибок
         ReleaseErrors  ReleaseErr=new ReleaseErrors(args[2]);
+
         // Загрузим опиесание ЗНИ из ЦУПа
         ZNIDescription ZNIDescript = new ZNIDescription(args[4]);
 
@@ -56,7 +57,6 @@ public class Main {
            if (args.length==5) debugFlag=args[5].equals("-d");
 
         // Сравнение релизов
-
         // ЗНИ, тип, ссылка, дистрибутив
         for (ReleaseItem Item : ReleaseNew.getITems())
         {
@@ -90,14 +90,18 @@ public class Main {
             String BaseZNI = Item.getItem().getZNI();
             for (String DepZNI : Item.getItem().getDependenceList())
             {
-                if (BuildItemsList.containsKey(DepZNI)) {
-                    if (BuildItemsList.get(DepZNI).getItem().getDependenceList().contains(BaseZNI))
+                BuildListItem DepItem=BuildItemsList.get(DepZNI);
+                if (DepItem==null)
+                {
+                    Item.setType(BuildListItem.BuildListItemType.errBuildLinks, DepZNI);
+                }
+                else
+                    if (DepItem.getItem().getDependenceList().contains(BaseZNI))
                     {
                         BuildItemsList.get(DepZNI).setType(BuildListItem.BuildListItemType.errCicleLinks, BaseZNI);
                         Item.setType(BuildListItem.BuildListItemType.errCicleLinks, DepZNI);
                         break;
                     }
-                }
             }
         }
 
@@ -110,12 +114,22 @@ public class Main {
             }
         };
 
+        // Отметим ЗНИ по которым есть ошибки и  от них есть зависимые ЗНИ они не включаются в сборку
+        for (BuildListItem Item : BuildItemsList.values())
+        {
+            for (String ReleaseError : ReleaseErr.getItems())
+            {
+                if (Item.getItem().getDependenceList().contains(ReleaseError))
+                    Item.setType(BuildListItem.BuildListItemType.errBuildLinks, ReleaseError);
+            }
+        }
 
         String NewZNIReport="";
         String NewVersionReport="";
         String WithoutChangeReport="";
         String HasErrorReport="";
         String HasLinkErrorReport="";
+        String BuildListRepoert="";
 
         ArrayList<String> HasErrorRemoveCmd=new ArrayList();
         Date Now = new Date();
@@ -129,6 +143,9 @@ public class Main {
         ArrayList<String> ChangeListNotes=new ArrayList();;
         ArrayList<String> BuildURLList=new ArrayList<>();
 
+
+        BuildBOrderList BuildOrder = new BuildBOrderList(BuildItemsList);
+        BuildListRepoert=BuildOrder.getBuildList(fullLoaderFlag);
 
         for (BuildListItem Item : BuildItemsList.values())
         {
@@ -156,6 +173,9 @@ public class Main {
                     break;
                 case errCicleLinks:
                     HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + Item.getItem().getZNI()+" сожержит цикличные ссылки в порядке установке с ЗНИ "+Item.getBuildError();
+                    HasErrorRemoveCmd.add("MOVE /Y "+NewDistribPath+ File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                case errBuildLinks:
+                    HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + Item.getItem().getZNI()+" ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ";
                     HasErrorRemoveCmd.add("MOVE /Y "+NewDistribPath+ File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
             }
 
@@ -186,17 +206,19 @@ public class Main {
         System.out.println(WithoutChangeReport);
 
         System.out.println();
-        System.out.println("ЗНИ с ошибками:");
+        System.out.println("ЗНИ с ошибками не включены в сборку:");
         System.out.println(HasErrorReport);
 
         System.out.println();
-        System.out.println("ЗНИ с ошибками порядка формирования релиза:");
+        System.out.println("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:");
         System.out.println(HasLinkErrorReport);
 
         System.out.println();
-        System.out.println("Порядок установки новых и измененнных ЗНИ:");
-        BuildBOrderList BuildOrder = new BuildBOrderList(BuildItemsList);
-        System.out.println(BuildOrder.getBuildList());
+        if (fullLoaderFlag)
+            System.out.println("Порядок установки ЗНИ:");
+        else
+            System.out.println("Порядок установки новых и измененнных ЗНИ:");
+        System.out.println(BuildListRepoert);
 
         if (debugFlag) {
             System.out.println();
