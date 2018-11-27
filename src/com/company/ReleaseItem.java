@@ -1,6 +1,9 @@
 package com.company;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 
 
 public class ReleaseItem {
@@ -138,6 +141,50 @@ public class ReleaseItem {
                 }
 
         return retval;
+    }
+
+    public ArrayList<FileInfo> GetPCKList(String DistribPath)
+    {
+        ArrayList<FileInfo> RetVal=new ArrayList<FileInfo>();
+
+        if (FileProvider.fileExists(Paths.get(DistribPath,Distributive, "install.txt").toString())) {
+            List<String> lines = FileProvider.LoadFile(Paths.get(DistribPath, Distributive, "install.txt").toString());
+
+            // PCK файлы для установки
+            Pattern pPCKListIndicator = Pattern.compile("(Установить|Устанавливаем)", Pattern.CASE_INSENSITIVE);
+            Pattern pPCK = Pattern.compile("([\\w-]+\\\\)*((ЗНО|C0|CI|SD|IM))*[_A-Za-z0-9-]*\\.pck", Pattern.CASE_INSENSITIVE);
+
+            for (String line : lines) {
+                ArrayList<String> fileList = new ArrayList<String>();
+
+                fileList.addAll(MatherHelper.GetMatchListByIndicator(line, pPCK, pPCKListIndicator));
+                fileList.forEach(s -> {
+                    FileInfo fileItem = new FileInfo(Paths.get(DistribPath, Distributive, s).toString());
+                    RetVal.add(fileItem);
+                });
+            }
+        }
+        return RetVal;
+    }
+
+    public ArrayList<FileInfo> GetMDBList(String DistribPath)
+    {
+        ArrayList<FileInfo> RetVal=new ArrayList<FileInfo>();
+
+        if (FileProvider.fileExists(Paths.get(DistribPath,Distributive, "install.txt").toString())) {
+            // Индикатор что есть Mdb
+            Pattern pMDB = Pattern.compile("([\\w-]+\\\\)*[_A-Za-z0-9-]*\\.mdb", Pattern.CASE_INSENSITIVE);
+            List<String> lines=FileProvider.LoadFile(Paths.get(DistribPath,Distributive,"install.txt").toString());
+
+            for (String line : lines)
+            {
+                ArrayList<String> fileList=new ArrayList<String>();
+
+                fileList.addAll(MatherHelper.GetMatchList(line, pMDB));
+                fileList.forEach(s->{ FileInfo fileItem=new FileInfo(Paths.get(DistribPath,Distributive,s).toString());  RetVal.add(fileItem); });
+            }
+        }
+        return RetVal;
     }
 
 }

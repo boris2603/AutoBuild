@@ -95,7 +95,7 @@ public class ReleaseErrors {
                 flagLookNextString=false;
 
             }
-            ReleaseErrorsItems.put(items[1],sReportString);
+            else ReleaseErrorsItems.put(items[1],sReportString);
         }
     }
 

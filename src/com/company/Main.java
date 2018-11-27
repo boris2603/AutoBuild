@@ -14,10 +14,14 @@ import com.company.BuildListItem;
 public class Main {
 
     public static void main(String[] args) {
-	// write your code here
+        // Список ЗНИ в релизах
         HashMap<String,BuildListItem> BuildItemsList=new HashMap<>();
         BuildListItem BuildItem=new BuildListItem();
+
+        // Путь где лежит новый дистрибутив
         String NewDistribPath = "";
+        // Путь где лежит старый дистрибутив
+        String OldDistribPath = "";
 
 
         if (args.length<4)
@@ -33,12 +37,15 @@ public class Main {
 
         };
 
-        // Загрузим описание релизов
-        ReleaseObjects ReleaseNew=new ReleaseObjects(args[0],args[3]);
-        ReleaseObjects ReleaseOld=new ReleaseObjects(args[1],args[3]);
 
         // Получим путь где лежит новая сборка
         NewDistribPath = Paths.get(args[0]).getParent().toString();
+        // Получим путь где лежит старая сборка
+        OldDistribPath = Paths.get(args[1]).getParent().toString();
+
+        // Загрузим описание релизов
+        ReleaseObjects ReleaseNew=new ReleaseObjects(args[0],args[3]);
+        ReleaseObjects ReleaseOld=new ReleaseObjects(args[1],args[3]);
 
         // Загрузим описание ошибок
         ReleaseErrors  ReleaseErr=new ReleaseErrors(args[2]);
@@ -51,13 +58,18 @@ public class Main {
         if (args.length>5) fullLoaderFlag=args[5].equals("-f");
 
         //Флаг расширенной диагностики в консоли
-       boolean debugFlag=false;
-       if (fullLoaderFlag)
-           if (args.length>6) debugFlag=args[6].equals("-d");
-       else
-           if (args.length==5) debugFlag=args[5].equals("-d");
+        boolean debugFlag=false;
+        if (fullLoaderFlag) {
+            if (args.length > 6)
+                debugFlag = args[6].equals("-d");
+        }
+        else {
+            if (args.length == 6)
+                debugFlag = args[5].equals("-d");
+        }
 
         // Сравнение релизов
+
         // ЗНИ, тип, ссылка, дистрибутив
         for (ReleaseItem Item : ReleaseNew.getITems())
         {
@@ -80,6 +92,9 @@ public class Main {
                     // Новая версия
                     BuildItem=new BuildListItem( BuildListItem.BuildListItemType.newVersion, Item);
                     BuildItemsList.put(Item.getZNI(),BuildItem);
+
+                    // Проверим что изменилось
+
                 }
 
             }
@@ -124,7 +139,6 @@ public class Main {
             {
                 if (Item.getItem().getDependenceList().contains(ReleaseError)) {
                     Item.setType(BuildListItem.BuildListItemType.errBuildLinks, ReleaseError);
-                    ReleaseErr.registerError(Item.getItem().getZNI()," ссылается на ЗНИ "+ReleaseError+" которой нет в сборке ");
                 }
             }
         }
@@ -134,7 +148,8 @@ public class Main {
         String WithoutChangeReport="";
         String HasErrorReport="";
         String HasLinkErrorReport="";
-        String BuildListRepoert="";
+        String BuildListReport="";
+        String ChangeOnlyInstallReport="";
 
         ArrayList<String> HasErrorRemoveCmd=new ArrayList();
         Date Now = new Date();
@@ -148,9 +163,14 @@ public class Main {
         ArrayList<String> ChangeListNotes=new ArrayList();;
         ArrayList<String> BuildURLList=new ArrayList<>();
 
-
         BuildBOrderList BuildOrder = new BuildBOrderList(BuildItemsList);
-        BuildListRepoert=BuildOrder.getBuildList(fullLoaderFlag);
+        BuildOrder.CompareRelease(ReleaseOld,NewDistribPath,OldDistribPath);
+
+        boolean flagBuildOrderList = false;
+
+        if (flagBuildOrderList) {
+            BuildListReport = BuildOrder.getBuildList(fullLoaderFlag);
+        }
 
         for (BuildListItem Item : BuildItemsList.values())
         {
@@ -172,16 +192,23 @@ public class Main {
                         BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
                     };
                     break;
+                case changeOnlyInstall:
+                    ChangeOnlyInstallReport = ChangeOnlyInstallReport + System.lineSeparator() + ReportString;
+                    if (fullLoaderFlag) {
+                        BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
+                    };
+                    break;
                 case hasError:
                     HasErrorReport=HasErrorReport+","+ releaseItem.getZNI();
-                    HasErrorRemoveCmd.add("MOVE /Y "+NewDistribPath+ File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                     break;
                 case errCicleLinks:
                     HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + Item.getItem().getZNI()+" сожержит цикличные ссылки в порядке установке с ЗНИ "+Item.getBuildError();
-                    HasErrorRemoveCmd.add("MOVE /Y "+NewDistribPath+ File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                 case errBuildLinks:
                     HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + Item.getItem().getZNI()+" ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ";
-                    HasErrorRemoveCmd.add("MOVE /Y "+NewDistribPath+ File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    ReleaseErr.registerError(Item.getItem().getZNI()," ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ");
             }
 
             // Формируем список ЗНИ с описанем
@@ -205,7 +232,6 @@ public class Main {
         }
 
 
-
         System.out.println();
         System.out.println("Новые ЗНИ:");
         System.out.println(NewZNIReport);
@@ -213,6 +239,12 @@ public class Main {
         System.out.println();
         System.out.println("Новыe версии ЗНИ:");
         System.out.println(NewVersionReport);
+
+        if (!ChangeOnlyInstallReport.isEmpty()) {
+            System.out.println();
+            System.out.println("Новыe версии ЗНИ без изменений в хранилищах и pck:");
+            System.out.println(ChangeOnlyInstallReport);
+        }
 
         System.out.println();
         System.out.println("Без изменений:");
@@ -226,12 +258,14 @@ public class Main {
         System.out.println("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:");
         System.out.println(HasLinkErrorReport);
 
-        System.out.println();
-        if (fullLoaderFlag)
-            System.out.println("Порядок установки ЗНИ:");
-        else
-            System.out.println("Порядок установки новых и измененнных ЗНИ:");
-        System.out.println(BuildListRepoert);
+        if (flagBuildOrderList) {
+            System.out.println();
+            if (fullLoaderFlag)
+                System.out.println("Порядок установки ЗНИ:");
+            else
+                System.out.println("Порядок установки новых и измененнных ЗНИ:");
+            System.out.println(BuildListReport);
+        }
 
         if (debugFlag) {
             System.out.println();
@@ -254,7 +288,8 @@ public class Main {
         ArrayList<String> txtAddressList=new ArrayList<>();
         for(String ErrItem : ReleaseErr.getItems())
         {
-            BuildItemsList.get(ErrItem).getItem().getEmails().forEach(s->txtAddressList.add(s+";"));
+            ArrayList<String> ItemEmails=ReleaseNew.getZNI(ErrItem).getEmails();
+            if (!ItemEmails.isEmpty()) ItemEmails.forEach(s->txtAddressList.add(s+";"));
         }
         FileProvider.SaveFile(Paths.get(NewDistribPath, "ODAddress.txt").toString(), txtAddressList);
     }

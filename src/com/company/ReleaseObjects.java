@@ -24,6 +24,7 @@ public class ReleaseObjects {
 
     public ReleaseItem getZNI(String ZNI) {return ReleaseItems.get(ZNI);};
 
+
     // Проверяем что ЗНИ есть в релизе
     boolean ZNIExistInRelease(String ZNI)
     {

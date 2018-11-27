@@ -1,5 +1,6 @@
 package com.company;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import com.company.BuildListItem.BuildListItemType;
@@ -13,6 +14,7 @@ public class BuildBOrderList {
         this.release = Release;
     };
 
+    // Получить список ЗНИ в порядке наката
     public String getBuildList(boolean fullLoaderFlag)
     {
         String BOListReport="";
@@ -38,6 +40,7 @@ public class BuildBOrderList {
         return BOListReport;
     }
 
+    // Добавить ЗНИ в сборку
     private ArrayList<String> AddReleaseItem(String ZNI,boolean fullLoaderFlag)
     {
         ArrayList<String> retVal = new ArrayList<>();
@@ -55,6 +58,37 @@ public class BuildBOrderList {
             retVal.add(ZNI);
         }
         return retVal;
+    }
+
+    // Сравнивает 2 релиза
+    public void CompareRelease(ReleaseObjects ReleaseOld, String ReleasePathNew, String ReleasePathOld)
+    {
+        for(BuildListItem Item : release.values())
+        {
+            if (Item.getItem().getZNI().equals("552853"))
+            {
+                System.out.println("552853");
+            }
+            if (Item.getType()==BuildListItemType.newVersion) {
+
+                // Проверим что не изменились PCK
+                ArrayList<FileInfo> oldReleasePck = ReleaseOld.getZNI(Item.getItem().getZNI()).GetPCKList(ReleasePathOld);
+                for (FileInfo pckFile : Item.getItem().GetPCKList(ReleasePathNew)) {
+                        if (FileProvider.fileExistsInList(pckFile,oldReleasePck)) {
+                                Item.setType(BuildListItemType.changeOnlyInstall, "");
+                    }
+                }
+
+                // Проверим что не изменились
+                ArrayList<FileInfo> oldReleaseMdb = ReleaseOld.getZNI(Item.getItem().getZNI()).GetMDBList(ReleasePathOld);
+                for (FileInfo mdbFile : Item.getItem().GetPCKList(ReleasePathNew)) {
+                    if (FileProvider.fileExistsInList(mdbFile,oldReleaseMdb)) {
+                        Item.setType(BuildListItemType.changeOnlyInstall, "");
+                    }
+                }
+            }
+        }
+
     }
 
 }
