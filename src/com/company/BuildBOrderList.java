@@ -65,10 +65,6 @@ public class BuildBOrderList {
     {
         for(BuildListItem Item : release.values())
         {
-            if (Item.getItem().getZNI().equals("552853"))
-            {
-                System.out.println("552853");
-            }
             if (Item.getType()==BuildListItemType.newVersion) {
 
                 // Проверим что не изменились PCK

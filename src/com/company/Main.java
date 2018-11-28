@@ -38,20 +38,31 @@ public class Main {
         };
 
 
+
         // Получим путь где лежит новая сборка
         NewDistribPath = Paths.get(args[0]).getParent().toString();
         // Получим путь где лежит старая сборка
         OldDistribPath = Paths.get(args[1]).getParent().toString();
+        System.out.println("New release path - "+NewDistribPath);
+        System.out.println("Old reliase path "+OldDistribPath);
 
+        System.out.print("Load release objects from "+args[0]+"...");
         // Загрузим описание релизов
         ReleaseObjects ReleaseNew=new ReleaseObjects(args[0],args[3]);
+        System.out.println(" Done");
+        System.out.print("Load release objects from "+args[1]+"...");
         ReleaseObjects ReleaseOld=new ReleaseObjects(args[1],args[3]);
+        System.out.println(" Done");
 
+        System.out.print("Load error list from "+args[2]+"...");
         // Загрузим описание ошибок
         ReleaseErrors  ReleaseErr=new ReleaseErrors(args[2]);
+        System.out.println(" Done");
 
+        System.out.print("Load descriptions from "+args[4]+"...");
         // Загрузим опиесание ЗНИ из ЦУПа
         ZNIDescription ZNIDescript = new ZNIDescription(args[4]);
+        System.out.println(" Done");
 
         // Проверим флаг что нужны все объекты
         boolean fullLoaderFlag=false;
@@ -70,6 +81,7 @@ public class Main {
 
         // Сравнение релизов
 
+        System.out.print("Compare releases ...");
         // ЗНИ, тип, ссылка, дистрибутив
         for (ReleaseItem Item : ReleaseNew.getITems())
         {
@@ -99,7 +111,9 @@ public class Main {
 
             }
         }
+        System.out.println("Done");
 
+        System.out.print("Check cyclic links ...");
         // Определить циклические зависимости по ЗНИ кандидатам в релизе
         for (BuildListItem Item : BuildItemsList.values())
         {
@@ -122,7 +136,9 @@ public class Main {
                     }
             }
         }
+        System.out.println("Done");
 
+        System.out.print("Check release objects having errors ...");
         // Отметим ЗНИ которые имеют не разрешеннные пересечения или ошибки написания install.txt
         for (String ReleaseError : ReleaseErr.getItems())
         {
@@ -131,7 +147,10 @@ public class Main {
                 BuildItemsList.get(ReleaseError).setType(BuildListItem.BuildListItemType.hasError,"");
             }
         };
+        System.out.println("Done");
 
+
+        System.out.print("Check release objects for whitch there are errors and here are dependent objects from them...");
         // Отметим ЗНИ по которым есть ошибки и  от них есть зависимые ЗНИ они не включаются в сборку
         for (BuildListItem Item : BuildItemsList.values())
         {
@@ -142,6 +161,7 @@ public class Main {
                 }
             }
         }
+        System.out.println("Done");
 
         String NewZNIReport="";
         String NewVersionReport="";
@@ -151,6 +171,7 @@ public class Main {
         String BuildListReport="";
         String ChangeOnlyInstallReport="";
 
+        System.out.print("Release distribution comparison ...");
         ArrayList<String> HasErrorRemoveCmd=new ArrayList();
         Date Now = new Date();
         SimpleDateFormat DateFormatter = new SimpleDateFormat("YYY-MM-dd");
@@ -162,11 +183,16 @@ public class Main {
 
         ArrayList<String> ChangeListNotes=new ArrayList();;
         ArrayList<String> BuildURLList=new ArrayList<>();
+        ArrayList<String> BuildMail=new ArrayList<String>();
 
         BuildBOrderList BuildOrder = new BuildBOrderList(BuildItemsList);
         BuildOrder.CompareRelease(ReleaseOld,NewDistribPath,OldDistribPath);
+        System.out.println("Done");
 
         boolean flagBuildOrderList = false;
+
+        System.out.println();
+        System.out.println("Generate reports ...");
 
         if (flagBuildOrderList) {
             BuildListReport = BuildOrder.getBuildList(fullLoaderFlag);
@@ -231,41 +257,54 @@ public class Main {
 
         }
 
+        System.out.println();
+        System.out.println("ЗНИ с ошибками пересечений не включены в сборку:");
+        System.out.println(HasErrorReport);
+        BuildMail.add(System.lineSeparator()+"ЗНИ с ошибками не включены в сборку:"+System.lineSeparator()+HasErrorReport);
+
+        System.out.println();
+        System.out.println("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:");
+        System.out.println(HasLinkErrorReport);
+        BuildMail.add(System.lineSeparator()+"ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:"+System.lineSeparator()+HasLinkErrorReport);
+
+        if (flagBuildOrderList) {
+            System.out.println();
+            if (fullLoaderFlag) {
+                System.out.println("Порядок установки ЗНИ:");
+                BuildMail.add(System.lineSeparator() + "Порядок установки ЗНИ:" + System.lineSeparator());
+            }
+            else {
+                System.out.println("Порядок установки новых и измененнных ЗНИ:");
+                BuildMail.add(System.lineSeparator() + "Порядок установки новых и измененнных ЗНИ:" + System.lineSeparator());
+            }
+
+            System.out.println(BuildListReport);
+            BuildMail.add(BuildListReport);
+        }
 
         System.out.println();
         System.out.println("Новые ЗНИ:");
         System.out.println(NewZNIReport);
+        BuildMail.add(System.lineSeparator()+"Новые ЗНИ:"+System.lineSeparator()+NewZNIReport);
 
         System.out.println();
         System.out.println("Новыe версии ЗНИ:");
         System.out.println(NewVersionReport);
+        BuildMail.add(System.lineSeparator()+"Новыe версии ЗНИ:"+System.lineSeparator()+NewVersionReport);
 
         if (!ChangeOnlyInstallReport.isEmpty()) {
             System.out.println();
             System.out.println("Новыe версии ЗНИ без изменений в хранилищах и pck:");
             System.out.println(ChangeOnlyInstallReport);
+            BuildMail.add(System.lineSeparator()+"Новыe версии ЗНИ без изменений в хранилищах и pck:"+System.lineSeparator()+ChangeOnlyInstallReport);
         }
 
         System.out.println();
         System.out.println("Без изменений:");
         System.out.println(WithoutChangeReport);
+        BuildMail.add(System.lineSeparator()+"Без изменений:"+System.lineSeparator()+WithoutChangeReport);
 
-        System.out.println();
-        System.out.println("ЗНИ с ошибками не включены в сборку:");
-        System.out.println(HasErrorReport);
 
-        System.out.println();
-        System.out.println("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:");
-        System.out.println(HasLinkErrorReport);
-
-        if (flagBuildOrderList) {
-            System.out.println();
-            if (fullLoaderFlag)
-                System.out.println("Порядок установки ЗНИ:");
-            else
-                System.out.println("Порядок установки новых и измененнных ЗНИ:");
-            System.out.println(BuildListReport);
-        }
 
         if (debugFlag) {
             System.out.println();
@@ -280,10 +319,15 @@ public class Main {
             System.out.println("Список ЗНИ для загрузки:");
             BuildURLList.forEach(System.out::println);
         }
+
+        System.out.println();
+        System.out.print("Generate files ...");
+
         FileProvider.SaveFile(Paths.get(NewDistribPath, "makeBuild.bat").toString(), HasErrorRemoveCmd);
         FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildNotes.txt").toString(), ChangeListNotes);
         FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildURLList.csv").toString(), BuildURLList);
         FileProvider.SaveFile(Paths.get(NewDistribPath, "ODMail.txt").toString(), ReleaseErr.getMailBody());
+        FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildMail.txt").toString(), BuildMail);
 
         ArrayList<String> txtAddressList=new ArrayList<>();
         for(String ErrItem : ReleaseErr.getItems())
@@ -292,5 +336,9 @@ public class Main {
             if (!ItemEmails.isEmpty()) ItemEmails.forEach(s->txtAddressList.add(s+";"));
         }
         FileProvider.SaveFile(Paths.get(NewDistribPath, "ODAddress.txt").toString(), txtAddressList);
+
+        System.out.println("Done");
+
+
     }
 }
