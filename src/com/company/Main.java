@@ -56,7 +56,7 @@ public class Main {
 
         System.out.print("Load error list from "+args[2]+"...");
         // Загрузим описание ошибок
-        ReleaseErrors  ReleaseErr=new ReleaseErrors(args[2]);
+        ReleaseErrors  ReleaseErr=new ReleaseErrors(args[2],ReleaseNew);
         System.out.println(" Done");
 
         System.out.print("Load descriptions from "+args[4]+"...");
@@ -318,16 +318,22 @@ public class Main {
             System.out.println();
             System.out.println("Список ЗНИ для загрузки:");
             BuildURLList.forEach(System.out::println);
+
+            System.out.println();
+            System.out.println("Письмо о ошибках:");
+            ReleaseErr.getMailBody().forEach(System.out::println);
         }
 
         System.out.println();
-        System.out.print("Generate files ...");
+        System.out.println("Generate files ...");
 
-        FileProvider.SaveFile(Paths.get(NewDistribPath, "makeBuild.bat").toString(), HasErrorRemoveCmd);
-        FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildNotes.txt").toString(), ChangeListNotes);
-        FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildURLList.csv").toString(), BuildURLList);
-        FileProvider.SaveFile(Paths.get(NewDistribPath, "ODMail.txt").toString(), ReleaseErr.getMailBody());
-        FileProvider.SaveFile(Paths.get(NewDistribPath, "BuildMail.txt").toString(), BuildMail);
+
+        WriteFile(NewDistribPath, "makeBuild.bat", HasErrorRemoveCmd);
+        WriteFile(NewDistribPath, "makeBuild.bat", HasErrorRemoveCmd);
+        WriteFile(NewDistribPath, "BuildNotes.txt", ChangeListNotes);
+        WriteFile(NewDistribPath, "BuildURLList.csv", BuildURLList);
+        WriteFile(NewDistribPath, "ODMail.txt", ReleaseErr.getMailBody());
+        WriteFile(NewDistribPath, "BuildMail.txt", BuildMail);
 
         ArrayList<String> txtAddressList=new ArrayList<>();
         for(String ErrItem : ReleaseErr.getItems())
@@ -335,10 +341,14 @@ public class Main {
             ArrayList<String> ItemEmails=ReleaseNew.getZNI(ErrItem).getEmails();
             if (!ItemEmails.isEmpty()) ItemEmails.forEach(s->txtAddressList.add(s+";"));
         }
-        FileProvider.SaveFile(Paths.get(NewDistribPath, "ODAddress.txt").toString(), txtAddressList);
+        WriteFile(NewDistribPath, "ODAddress.txt", txtAddressList);
 
+    }
+
+    public static void WriteFile(String filePath, String fileName, ArrayList<String> fileBody)
+    {
+        System.out.print("Write file "+fileName+" ... ");
+        FileProvider.SaveFile(Paths.get(filePath,fileName).toString(), fileBody);
         System.out.println("Done");
-
-
     }
 }

@@ -9,12 +9,16 @@ import java.util.List;
 
 public class ReleaseErrors {
     HashMap<String,String> ReleaseErrorsItems;
+    ArrayList<String> ReleaseErrorMail;
+    ReleaseObjects Release;
 
     private static String LN=System.lineSeparator();
 
-    ReleaseErrors(String ReleaseErrorsPath)
+    ReleaseErrors(String ReleaseErrorsPath,ReleaseObjects ErrorRelease)
     {
         ReleaseErrorsItems=new HashMap<>();
+        ReleaseErrorMail=new ArrayList<String>();
+        Release=ErrorRelease;
         parceErrors(FileProvider.LoadFile(ReleaseErrorsPath));
     };
 
@@ -24,8 +28,7 @@ public class ReleaseErrors {
     };
 
     public ArrayList<String> getMailBody() {
-        ArrayList<String> retVal=new ArrayList<String>(ReleaseErrorsItems.values());
-        return retVal;
+        return ReleaseErrorMail;
     }
 
 
@@ -46,6 +49,7 @@ public class ReleaseErrors {
         String sMainZNI=new String();
         String sOverlapZNI=new String();
         ReleaseErrorsItems.clear();
+        ReleaseErrorMail.clear();
 
         for(String line : lines) {
             String[] items = line.split(",");
@@ -61,6 +65,7 @@ public class ReleaseErrors {
                     sMainZNI = items[1];
                     sOverlapZNI="";
                     ReleaseErrorsItems.put(items[1],sReportString);
+                    ReleaseErrorMail.add(sReportString);
                 }
             }
 
@@ -87,17 +92,23 @@ public class ReleaseErrors {
                     break;
                 case "4":
                     sReportString=sReportString+"    Сообщите о изменении кода разработчкам ЗНИ "+items[3];
+                    if (Release.getZNI(items[3])!=null)
+                    {
+                        sReportString=sReportString+" "+Release.getZNI(items[3]).getDeveloper();
+                    }
                     break;
             }
             if (flagLookNextString & items.length==1)
             {
                 sReportString="   "+items[0]+LN;
                 flagLookNextString=false;
-
+                ReleaseErrorMail.add(sReportString);
             }
-            else ReleaseErrorsItems.put(items[1],sReportString);
+            else {
+                ReleaseErrorsItems.put(items[1], sReportString);
+                ReleaseErrorMail.add(sReportString);
+            }
+            }
         }
     }
 
-
-}
