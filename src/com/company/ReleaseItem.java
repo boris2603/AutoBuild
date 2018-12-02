@@ -65,6 +65,18 @@ public class ReleaseItem {
 
     public ArrayList<String> getAlsoReleasedList() {return AlsoReleasedList;}
 
+    public String getAlsoReleasedListString() {
+        String retVal="";
+        for(String alsoReleased : AlsoReleasedList)
+        {
+            if (retVal.isEmpty())
+                retVal=alsoReleased;
+             else
+                retVal=retVal+"," + alsoReleased;
+        }
+     return retVal;
+    }
+
 
     // Добавление в список с контролем добаквки
     private void AddToList(String addItem, ArrayList<String> targetList)

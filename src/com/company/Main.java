@@ -104,9 +104,6 @@ public class Main {
                     // Новая версия
                     BuildItem=new BuildListItem( BuildListItem.BuildListItemType.newVersion, Item);
                     BuildItemsList.put(Item.getZNI(),BuildItem);
-
-                    // Проверим что изменилось
-
                 }
 
             }
@@ -150,7 +147,7 @@ public class Main {
         System.out.println("Done");
 
 
-        System.out.print("Check release objects for whitch there are errors and here are dependent objects from them...");
+        System.out.print("Check release objects for which there are errors and here are dependent objects from them...");
         // Отметим ЗНИ по которым есть ошибки и  от них есть зависимые ЗНИ они не включаются в сборку
         for (BuildListItem Item : BuildItemsList.values())
         {
@@ -170,8 +167,35 @@ public class Main {
         String HasLinkErrorReport="";
         String BuildListReport="";
         String ChangeOnlyInstallReport="";
+        String RemovedReport="";
+        String JiraIssueReport="";
+
+        ArrayList<String> ChangeListNotes=new ArrayList();;
+        ArrayList<String> BuildURLList=new ArrayList<>();
+        ArrayList<String> BuildMail=new ArrayList<>();
+
+        System.out.print("Check removed release objects...");
+        for (String oldReleaseItem : ReleaseOld.getZNIList())
+        {
+            if (ReleaseNew.getZNI(oldReleaseItem)==null)
+            {
+                if (RemovedReport.length()==0)
+                    RemovedReport=oldReleaseItem;
+                else
+                    RemovedReport=RemovedReport+","+oldReleaseItem;
+
+                for (String oldAlsoRelItem : ReleaseOld.getZNI(oldReleaseItem).getAlsoReleasedList()) {
+                    if (ReleaseNew.getZNI(oldAlsoRelItem) == null) {
+                            RemovedReport = RemovedReport + "," + oldAlsoRelItem;
+                        }
+                }
+            }
+        }
+        System.out.println("Done");
 
         System.out.print("Release distribution comparison ...");
+
+        // Подготовить имена каталогов для батн релиза
         ArrayList<String> HasErrorRemoveCmd=new ArrayList();
         Date Now = new Date();
         SimpleDateFormat DateFormatter = new SimpleDateFormat("YYY-MM-dd");
@@ -181,51 +205,62 @@ public class Main {
         HasErrorRemoveCmd.add("RD /S /Q "+ErrDistribStoragePath);
         HasErrorRemoveCmd.add("MD "+ErrDistribStoragePath);
 
-        ArrayList<String> ChangeListNotes=new ArrayList();;
-        ArrayList<String> BuildURLList=new ArrayList<>();
-        ArrayList<String> BuildMail=new ArrayList<String>();
 
+        // Проверим что изменилось в дистрибуивах
         BuildBOrderList BuildOrder = new BuildBOrderList(BuildItemsList);
         BuildOrder.CompareRelease(ReleaseOld,NewDistribPath,OldDistribPath);
         System.out.println("Done");
 
-        boolean flagBuildOrderList = false;
+        boolean flagBuildOrderList = true;
+        if (flagBuildOrderList) {
+            System.out.println();
+            System.out.print("Generate order list ...");
+            BuildListReport = BuildOrder.getBuildList(fullLoaderFlag);
+            System.out.println("Done");
+        }
+
 
         System.out.println();
         System.out.println("Generate reports ...");
 
-        if (flagBuildOrderList) {
-            BuildListReport = BuildOrder.getBuildList(fullLoaderFlag);
-        }
-
         for (BuildListItem Item : BuildItemsList.values())
         {
             ReleaseItem releaseItem = Item.getItem();
-            String ReportString=releaseItem.getZNI()+" "+releaseItem.getULR();
+            String ReportString=releaseItem.getZNI();
+            if (!releaseItem.getAlsoReleasedList().isEmpty())
+                ReportString=ReportString+"," +  releaseItem.getAlsoReleasedListString();
+
+            ReportString=ReportString+" "+releaseItem.getULR();
 
             switch (Item.getType()) {
                 case newZNI:
                     NewZNIReport = NewZNIReport + System.lineSeparator() + ReportString;
                     BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
+                    JiraIssueReport=MakeComaSeparatedList(JiraIssueReport,releaseItem.getJiraIssue());
                     break;
                 case newVersion:
                     NewVersionReport = NewVersionReport + System.lineSeparator() + ReportString;
                     BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
+                    JiraIssueReport=MakeComaSeparatedList(JiraIssueReport,releaseItem.getJiraIssue());
                     break;
                 case withoutChange:
                     WithoutChangeReport = WithoutChangeReport + System.lineSeparator() + ReportString;
+                    JiraIssueReport=MakeComaSeparatedList(JiraIssueReport,releaseItem.getJiraIssue());
                     if (fullLoaderFlag) {
                         BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
                     };
                     break;
                 case changeOnlyInstall:
                     ChangeOnlyInstallReport = ChangeOnlyInstallReport + System.lineSeparator() + ReportString;
+                    JiraIssueReport=MakeComaSeparatedList(JiraIssueReport,releaseItem.getJiraIssue());
                     if (fullLoaderFlag) {
                         BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
                     };
                     break;
                 case hasError:
-                    HasErrorReport=HasErrorReport+","+ releaseItem.getZNI();
+                    HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItem.getZNI());
+                    if (!releaseItem.getAlsoReleasedList().isEmpty())
+                            HasErrorReport=HasErrorReport+","+releaseItem.getAlsoReleasedListString();
                     HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                     break;
                 case errCicleLinks:
@@ -234,7 +269,6 @@ public class Main {
                 case errBuildLinks:
                     HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + Item.getItem().getZNI()+" ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ";
                     HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
-                    ReleaseErr.registerError(Item.getItem().getZNI()," ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ");
             }
 
             // Формируем список ЗНИ с описанем
@@ -257,6 +291,7 @@ public class Main {
 
         }
 
+
         System.out.println();
         System.out.println("ЗНИ с ошибками пересечений не включены в сборку:");
         System.out.println(HasErrorReport);
@@ -266,6 +301,10 @@ public class Main {
         System.out.println("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:");
         System.out.println(HasLinkErrorReport);
         BuildMail.add(System.lineSeparator()+"ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:"+System.lineSeparator()+HasLinkErrorReport);
+
+        System.out.println();
+        System.out.println("ЗНИ удаленные из сборки:");
+        System.out.println(RemovedReport);
 
         if (flagBuildOrderList) {
             System.out.println();
@@ -329,18 +368,30 @@ public class Main {
 
 
         WriteFile(NewDistribPath, "makeBuild.bat", HasErrorRemoveCmd);
-        WriteFile(NewDistribPath, "makeBuild.bat", HasErrorRemoveCmd);
         WriteFile(NewDistribPath, "BuildNotes.txt", ChangeListNotes);
         WriteFile(NewDistribPath, "BuildURLList.csv", BuildURLList);
         WriteFile(NewDistribPath, "ODMail.txt", ReleaseErr.getMailBody());
         WriteFile(NewDistribPath, "BuildMail.txt", BuildMail);
 
+        ArrayList<String> JiraIssues = new ArrayList<>();
+        JiraIssues.add(JiraIssueReport);
+
+        WriteFile(NewDistribPath, "BuildJiraList.txt", JiraIssues);
+
+        System.out.print("Generate Emails List ...");
         ArrayList<String> txtAddressList=new ArrayList<>();
-        for(String ErrItem : ReleaseErr.getItems())
-        {
-            ArrayList<String> ItemEmails=ReleaseNew.getZNI(ErrItem).getEmails();
-            if (!ItemEmails.isEmpty()) ItemEmails.forEach(s->txtAddressList.add(s+";"));
+        for(String ErrItem : ReleaseErr.getItems()) {
+            if (debugFlag) {
+                System.out.println(ErrItem);
+            }
+            if (ErrItem.length() == 0) {
+                ReleaseItem RelItem = ReleaseNew.getZNI(ErrItem);
+                if (RelItem != null) {
+                    RelItem.getEmails().stream().filter(s -> (s != null)).forEach(s -> txtAddressList.add(s + ";"));
+                } else System.out.println(ErrItem + " not found email address");
+            }
         }
+        System.out.println("Done");
         WriteFile(NewDistribPath, "ODAddress.txt", txtAddressList);
 
     }
@@ -351,4 +402,21 @@ public class Main {
         FileProvider.SaveFile(Paths.get(filePath,fileName).toString(), fileBody);
         System.out.println("Done");
     }
+
+    public static String MakeComaSeparatedList(String list, String item)
+    {
+        String retval;
+
+        if (item==null) return list;
+
+        if (list.length()==0) {
+            retval=item;
+        }
+        else {
+            retval=list+","+item;
+        }
+
+        return retval;
+    }
+
 }

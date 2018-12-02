@@ -25,6 +25,7 @@ public class ReleaseErrors {
     public void registerError(String ZNI,String Error)
     {
       ReleaseErrorsItems.put(ZNI,Error);
+      // ReleaseErrorMail.add(ZNI+Error);
     };
 
     public ArrayList<String> getMailBody() {
@@ -102,12 +103,11 @@ public class ReleaseErrors {
             {
                 sReportString="   "+items[0]+LN;
                 flagLookNextString=false;
-                ReleaseErrorMail.add(sReportString);
             }
             else {
-                ReleaseErrorsItems.put(items[1], sReportString);
-                ReleaseErrorMail.add(sReportString);
+                if (items[1].length() > 0) ReleaseErrorsItems.put(items[1], sReportString);
             }
+            ReleaseErrorMail.add(sReportString);
             }
         }
     }

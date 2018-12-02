@@ -22,7 +22,10 @@ public class ReleaseObjects {
 
     public boolean containsZNI(String ZNI) {return ReleaseItems.containsKey(ZNI);};
 
-    public ReleaseItem getZNI(String ZNI) {return ReleaseItems.get(ZNI);};
+    public ReleaseItem getZNI(String ZNI)
+    {
+        return ReleaseItems.get(ZNI);
+    };
 
 
     // Проверяем что ЗНИ есть в релизе

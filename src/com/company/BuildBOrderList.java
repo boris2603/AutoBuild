@@ -35,7 +35,10 @@ public class BuildBOrderList {
 
         for (String item : BOArray)
         {
-            BOListReport=BOListReport + item + ",";
+            if (BOListReport.length()==0)
+                BOListReport=item;
+            else
+                BOListReport=BOListReport +","+item;
         }
         return BOListReport;
     }
