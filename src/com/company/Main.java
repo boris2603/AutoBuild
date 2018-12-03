@@ -11,6 +11,8 @@ import java.util.Date;
 
 import com.company.BuildListItem;
 
+import static com.company.BuildListItem.BuildListItemType.issueMismatch;
+
 public class Main {
 
     public static void main(String[] args) {
@@ -169,6 +171,7 @@ public class Main {
         String ChangeOnlyInstallReport="";
         String RemovedReport="";
         String JiraIssueReport="";
+        String issueMismatchReport="";
 
         ArrayList<String> ChangeListNotes=new ArrayList();;
         ArrayList<String> BuildURLList=new ArrayList<>();
@@ -226,11 +229,18 @@ public class Main {
         for (BuildListItem Item : BuildItemsList.values())
         {
             ReleaseItem releaseItem = Item.getItem();
-            String ReportString=releaseItem.getZNI();
-            if (!releaseItem.getAlsoReleasedList().isEmpty())
-                ReportString=ReportString+"," +  releaseItem.getAlsoReleasedListString();
+            String releaseItemList=releaseItem.getZNI(); // Список ЗНИ реализованных в дистрибутиве
+            String ReportString="";
 
-            ReportString=ReportString+" "+releaseItem.getULR();
+            if (!releaseItem.getAlsoReleasedList().isEmpty())
+                releaseItemList=releaseItemList+"," +  releaseItem.getAlsoReleasedListString();
+
+            if (releaseItem.getULR()==null)
+            {
+                Item.setType(issueMismatch,releaseItemList);
+            }
+            ReportString=releaseItemList+" "+releaseItem.getULR();
+
 
             switch (Item.getType()) {
                 case newZNI:
@@ -258,16 +268,17 @@ public class Main {
                     };
                     break;
                 case hasError:
-                    HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItem.getZNI());
-                    if (!releaseItem.getAlsoReleasedList().isEmpty())
-                            HasErrorReport=HasErrorReport+","+releaseItem.getAlsoReleasedListString();
+                    HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItemList);
                     HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                     break;
                 case errCicleLinks:
-                    HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + Item.getItem().getZNI()+" сожержит цикличные ссылки в порядке установке с ЗНИ "+Item.getBuildError();
+                    HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + releaseItemList +" сожержит цикличные ссылки в порядке установке с ЗНИ "+Item.getBuildError();
                     HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                 case errBuildLinks:
-                    HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + Item.getItem().getZNI()+" ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ";
+                    HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + releaseItemList +" ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ";
+                    HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                case issueMismatch:
+                    issueMismatchReport=MakeComaSeparatedList(issueMismatchReport,releaseItemList);
                     HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
             }
 
@@ -284,8 +295,15 @@ public class Main {
             if (!releaseItem.getAlsoReleasedList().isEmpty())
             {
                for(String AlsoeleasedZNI : releaseItem.getAlsoReleasedList()) {
-                   ZNIDescriptionItem ZNIItem = ZNIDescript.ZNIDescriptionList.get(AlsoeleasedZNI);
-                   ChangeListNotes.add(ZNIItem.ZNI + " " + ZNIItem.Description + " " + ZNIItem.ConfigurationItem);
+                   if (ZNIDescript.ZNIDescriptionList.containsKey(AlsoeleasedZNI)) {
+                       ZNIDescriptionItem ZNIItem = ZNIDescript.ZNIDescriptionList.get(AlsoeleasedZNI);
+                       ChangeListNotes.add(ZNIItem.ZNI + " " + ZNIItem.Description + " " + ZNIItem.ConfigurationItem);
+                   }
+                   else
+                   {
+                       System.out.print("Error ZNI description not found ");
+                       System.out.println(releaseItem.getZNI());
+                   }
                }
             }
 
@@ -296,6 +314,11 @@ public class Main {
         System.out.println("ЗНИ с ошибками пересечений не включены в сборку:");
         System.out.println(HasErrorReport);
         BuildMail.add(System.lineSeparator()+"ЗНИ с ошибками не включены в сборку:"+System.lineSeparator()+HasErrorReport);
+
+        System.out.println();
+        System.out.println("ЗНИ не включены в сборку тк номер ЗНИ install.txt не соотвествует Jira:");
+        System.out.println(issueMismatchReport);
+        BuildMail.add(System.lineSeparator()+"ЗНИ не включены в сборку т.к. номер ЗНИ install.txt не соотвествует Jira:"+System.lineSeparator()+issueMismatchReport);
 
         System.out.println();
         System.out.println("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:");
@@ -309,12 +332,12 @@ public class Main {
         if (flagBuildOrderList) {
             System.out.println();
             if (fullLoaderFlag) {
-                System.out.println("Порядок установки ЗНИ:");
-                BuildMail.add(System.lineSeparator() + "Порядок установки ЗНИ:" + System.lineSeparator());
+                System.out.println("Рекомендуемый порядок установки ЗНИ:");
+                BuildMail.add(System.lineSeparator() + "Рекомендуемый порядок установки ЗНИ:" + System.lineSeparator());
             }
             else {
-                System.out.println("Порядок установки новых и измененнных ЗНИ:");
-                BuildMail.add(System.lineSeparator() + "Порядок установки новых и измененнных ЗНИ:" + System.lineSeparator());
+                System.out.println("Рекомендуемый порядок установки новых и измененнных ЗНИ:");
+                BuildMail.add(System.lineSeparator() + "Рекомендуемый порядок установки новых и измененнных ЗНИ:" + System.lineSeparator());
             }
 
             System.out.println(BuildListReport);
@@ -381,9 +404,7 @@ public class Main {
         System.out.print("Generate Emails List ...");
         ArrayList<String> txtAddressList=new ArrayList<>();
         for(String ErrItem : ReleaseErr.getItems()) {
-            if (debugFlag) {
-                System.out.println(ErrItem);
-            }
+
             if (ErrItem.length() == 0) {
                 ReleaseItem RelItem = ReleaseNew.getZNI(ErrItem);
                 if (RelItem != null) {

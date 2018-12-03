@@ -25,7 +25,8 @@ public class BuildBOrderList {
         {
           if ((value.getType()!=BuildListItemType.errCicleLinks) &&
                   (value.getType()!=BuildListItemType.hasError) &&
-                  (value.getType()!=BuildListItemType.errBuildLinks))
+                  (value.getType()!=BuildListItemType.errBuildLinks) &&
+                  (value.getType()!=BuildListItemType.issueMismatch))
                     if (fullLoaderFlag)
                             BOArray.addAll(AddReleaseItem(value.getItem().getZNI(),fullLoaderFlag));
                     else {
