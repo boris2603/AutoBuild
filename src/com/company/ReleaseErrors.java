@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class ReleaseErrors {
     HashMap<String,String> ReleaseErrorsItems;
@@ -49,13 +50,14 @@ public class ReleaseErrors {
         boolean flagLookNextString=false;
         String sMainZNI=new String();
         String sOverlapZNI=new String();
+
+
         ReleaseErrorsItems.clear();
         ReleaseErrorMail.clear();
 
         for(String line : lines) {
             String[] items = line.split(",");
             String sReportString=new String();
-
 
             if ((items.length<2) & !flagLookNextString)
                 continue;
@@ -65,7 +67,7 @@ public class ReleaseErrors {
                     sReportString = LN+"ЗНИ " + items[1] + " разработчик " + items[2];
                     sMainZNI = items[1];
                     sOverlapZNI="";
-                    ReleaseErrorsItems.put(items[1],sReportString);
+                    ReleaseErrorsItems.put(sMainZNI,sReportString);
                     ReleaseErrorMail.add(sReportString);
                 }
             }
@@ -85,8 +87,11 @@ public class ReleaseErrors {
                     sReportString=LN+LN+" Ошибка при разборе Install.txt";
                     if (items[1].length()>0)
                         sReportString=sReportString+" по ЗНИ "+items[1];
-                    else
-                        sReportString=sReportString+" по файлу "+items[2];
+                    else {
+                        sReportString = sReportString + " по файлу " + items[2];
+                        Pattern pZNInum = Pattern.compile("(_|-)[0-9]{6}_", Pattern.CASE_INSENSITIVE);
+                        items[1]=MatherHelper.GetMatchParam(items[2], pZNInum,0).substring(1,7);
+                    }
                     flagLookNextString=true;
                     sMainZNI="";
                     sOverlapZNI="";

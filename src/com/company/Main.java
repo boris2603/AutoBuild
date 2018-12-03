@@ -40,7 +40,6 @@ public class Main {
         };
 
 
-
         // Получим путь где лежит новая сборка
         NewDistribPath = Paths.get(args[0]).getParent().toString();
         // Получим путь где лежит старая сборка
@@ -229,11 +228,13 @@ public class Main {
         for (BuildListItem Item : BuildItemsList.values())
         {
             ReleaseItem releaseItem = Item.getItem();
-            String releaseItemList=releaseItem.getZNI(); // Список ЗНИ реализованных в дистрибутиве
+            String releaseItemList="";
             String ReportString="";
 
+            releaseItemList=MakeComaSeparatedList(releaseItemList,releaseItem.getZNI()); // Список ЗНИ реализованных в дистрибутиве
+
             if (!releaseItem.getAlsoReleasedList().isEmpty())
-                releaseItemList=releaseItemList+"," +  releaseItem.getAlsoReleasedListString();
+                releaseItemList=MakeComaSeparatedList(releaseItemList,releaseItem.getAlsoReleasedListString());
 
             if (releaseItem.getULR()==null)
             {
@@ -268,7 +269,6 @@ public class Main {
                     };
                     break;
                 case hasError:
-                    HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItemList);
                     HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                     break;
                 case errCicleLinks:
@@ -309,6 +309,15 @@ public class Main {
 
         }
 
+        // Сформируем список ошибочных ЗНИ
+        for(String errReliseItem : ReleaseErr.ReleaseErrorsItems.keySet())
+        {
+            ReleaseItem releaseItem=ReleaseNew.getZNI(errReliseItem); // Список ЗНИ реализованных в дистрибутиве
+
+            if (releaseItem!=null && !releaseItem.getAlsoReleasedList().isEmpty())
+                HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItem.getAlsoReleasedListString());
+            HasErrorReport=MakeComaSeparatedList(HasErrorReport,errReliseItem);
+        };
 
         System.out.println();
         System.out.println("ЗНИ с ошибками пересечений не включены в сборку:");
