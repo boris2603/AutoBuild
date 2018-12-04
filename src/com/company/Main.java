@@ -315,9 +315,6 @@ public class Main {
                            case newZNI:
                                needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,AlsoeleasedZNI);
                                break;
-                           case withoutChange:
-                               needLoadRequimentRequestReport=MakeComaSeparatedList(needLoadRequimentRequestReport,AlsoeleasedZNI);
-                               break;
                            case newVersion:
                                needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,AlsoeleasedZNI);
                                break;
@@ -341,7 +338,7 @@ public class Main {
         };
 
         PrintReport("ЗНИ с ошибками пересечений не включены в сборку:",HasErrorReport, BuildMail);
-        PrintReport("ЗНИ не включены в сборку тк номер ЗНИ install.txt не соотвествует Jira:",issueMismatchReport,BuildMail);;
+        PrintReport("ЗНИ не включены в сборку тк номер ЗНИ install.txt не соответствует Jira:",issueMismatchReport,BuildMail);;
         PrintReport("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:",HasLinkErrorReport,BuildMail);
         PrintReport("ЗНИ удаленные из сборки:",RemovedReport,BuildMail);
 
@@ -349,11 +346,11 @@ public class Main {
             if (fullLoaderFlag)
                 PrintReport("Рекомендуемый порядок установки ЗНИ:",BuildListReport,BuildMail );
             else
-                PrintReport("Рекомендуемый порядок установки новых и измененнных ЗНИ:", BuildListReport, BuildMail);
+                PrintReport("Рекомендуемый порядок установки новых и измененных ЗНИ:", BuildListReport, BuildMail);
         }
 
         PrintReport("Данные ЗНИ будут допущены к внедрению при снятии признака НТ:",needLoadRequimentCancelReport,BuildMail);
-        PrintReport("В связи с обновлением версии по данным ЗНИ владельцаи продуктов  необходимо получить от ЦСПС акцепт на зачет результатов НТ по версиям, переданным на НТ ранее",needLoadRequimentRequestReport,BuildMail);
+        PrintReport("В связи с обновлением версии по данным ЗНИ владельцам продуктов  необходимо получить от ЦСПС акцепт на зачет результатов НТ по версиям, переданным на НТ ранее",needLoadRequimentRequestReport,BuildMail);
 
         PrintReport("Новые ЗНИ:",NewZNIReport,BuildMail);
         PrintReport("Новыe версии ЗНИ:",NewVersionReport,BuildMail);
