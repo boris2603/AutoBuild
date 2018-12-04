@@ -11,7 +11,7 @@ import java.util.Date;
 
 import com.company.BuildListItem;
 
-import static com.company.BuildListItem.BuildListItemType.issueMismatch;
+import static com.company.BuildListItem.BuildListItemType.*;
 
 public class Main {
 
@@ -121,14 +121,14 @@ public class Main {
                 BuildListItem DepItem=BuildItemsList.get(DepZNI);
                 if (DepItem==null)
                 {
-                    Item.setType(BuildListItem.BuildListItemType.errBuildLinks, DepZNI);
+                    Item.setType(errBuildLinks, DepZNI);
                     ReleaseErr.registerError(BaseZNI," ссылается на ЗНИ "+DepZNI+" которой нет в сборке ");
                 }
                 else
                     if (DepItem.getItem().getDependenceList().contains(BaseZNI))
                     {
-                        BuildItemsList.get(DepZNI).setType(BuildListItem.BuildListItemType.errCicleLinks, BaseZNI);
-                        Item.setType(BuildListItem.BuildListItemType.errCicleLinks, DepZNI);
+                        BuildItemsList.get(DepZNI).setType(errCicleLinks, BaseZNI);
+                        Item.setType(errCicleLinks, DepZNI);
                         ReleaseErr.registerError(BaseZNI," сожержит цикличные ссылки в порядке установке с ЗНИ "+DepZNI);
                         break;
                     }
@@ -142,7 +142,7 @@ public class Main {
         {
             if (BuildItemsList.containsKey(ReleaseError))
             {
-                BuildItemsList.get(ReleaseError).setType(BuildListItem.BuildListItemType.hasError,"");
+                BuildItemsList.get(ReleaseError).setType(hasError,"");
             }
         };
         System.out.println("Done");
@@ -155,7 +155,7 @@ public class Main {
             for (String ReleaseError : ReleaseErr.getItems())
             {
                 if (Item.getItem().getDependenceList().contains(ReleaseError)) {
-                    Item.setType(BuildListItem.BuildListItemType.errBuildLinks, ReleaseError);
+                    Item.setType(errBuildLinks, ReleaseError);
                 }
             }
         }
@@ -171,6 +171,8 @@ public class Main {
         String RemovedReport="";
         String JiraIssueReport="";
         String issueMismatchReport="";
+        String needLoadRequimentRequestReport="";
+        String needLoadRequimentCancelReport="";
 
         ArrayList<String> ChangeListNotes=new ArrayList();;
         ArrayList<String> BuildURLList=new ArrayList<>();
@@ -282,28 +284,47 @@ public class Main {
                     HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
             }
 
-            // Формируем список ЗНИ с описанем
+            // Проверим на требование к НТ и сформируем описание ЗНИ из ЦУПа
             if (ZNIDescript.ZNIDescriptionList.containsKey(releaseItem.getZNI())) {
                 ZNIDescriptionItem ZNIItem= ZNIDescript.ZNIDescriptionList.get(releaseItem.getZNI());
                 ChangeListNotes.add(ZNIItem.ZNI + " "+ ZNIItem.Description+" "+ZNIItem.ConfigurationItem);
-            }
+                if (ZNIItem.LoadRequirement)
+                    switch (Item.getType()) {
+                        case newZNI:
+                            needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,releaseItem.getZNI());
+                        break;
+                        case withoutChange:
+                            needLoadRequimentRequestReport=MakeComaSeparatedList(needLoadRequimentRequestReport,releaseItem.getZNI());
+                        break;
+                        case newVersion:
+                            needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,releaseItem.getZNI());
+                        break;
+                    }
+                }
             else
-            {
-                System.out.print("Error ZNI description not found ");
-                System.out.println(releaseItem.getZNI());
-            }
+                System.out.print("Error ZNI description not found "+releaseItem.getZNI());
+
             if (!releaseItem.getAlsoReleasedList().isEmpty())
             {
                for(String AlsoeleasedZNI : releaseItem.getAlsoReleasedList()) {
                    if (ZNIDescript.ZNIDescriptionList.containsKey(AlsoeleasedZNI)) {
                        ZNIDescriptionItem ZNIItem = ZNIDescript.ZNIDescriptionList.get(AlsoeleasedZNI);
                        ChangeListNotes.add(ZNIItem.ZNI + " " + ZNIItem.Description + " " + ZNIItem.ConfigurationItem);
+                       if (ZNIItem.LoadRequirement)
+                       switch (Item.getType()) {
+                           case newZNI:
+                               needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,AlsoeleasedZNI);
+                               break;
+                           case withoutChange:
+                               needLoadRequimentRequestReport=MakeComaSeparatedList(needLoadRequimentRequestReport,AlsoeleasedZNI);
+                               break;
+                           case newVersion:
+                               needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,AlsoeleasedZNI);
+                               break;
+                       }
                    }
                    else
-                   {
-                       System.out.print("Error ZNI description not found ");
-                       System.out.println(releaseItem.getZNI());
-                   }
+                       System.out.print("Error ZNI description not found "+AlsoeleasedZNI);
                }
             }
 
@@ -319,63 +340,29 @@ public class Main {
             HasErrorReport=MakeComaSeparatedList(HasErrorReport,errReliseItem);
         };
 
-        System.out.println();
-        System.out.println("ЗНИ с ошибками пересечений не включены в сборку:");
-        System.out.println(HasErrorReport);
-        BuildMail.add(System.lineSeparator()+"ЗНИ с ошибками не включены в сборку:"+System.lineSeparator()+HasErrorReport);
-
-        System.out.println();
-        System.out.println("ЗНИ не включены в сборку тк номер ЗНИ install.txt не соотвествует Jira:");
-        System.out.println(issueMismatchReport);
-        BuildMail.add(System.lineSeparator()+"ЗНИ не включены в сборку т.к. номер ЗНИ install.txt не соотвествует Jira:"+System.lineSeparator()+issueMismatchReport);
-
-        System.out.println();
-        System.out.println("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:");
-        System.out.println(HasLinkErrorReport);
-        BuildMail.add(System.lineSeparator()+"ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:"+System.lineSeparator()+HasLinkErrorReport);
-
-        System.out.println();
-        System.out.println("ЗНИ удаленные из сборки:");
-        System.out.println(RemovedReport);
+        PrintReport("ЗНИ с ошибками пересечений не включены в сборку:",HasErrorReport, BuildMail);
+        PrintReport("ЗНИ не включены в сборку тк номер ЗНИ install.txt не соотвествует Jira:",issueMismatchReport,BuildMail);;
+        PrintReport("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:",HasLinkErrorReport,BuildMail);
+        PrintReport("ЗНИ удаленные из сборки:",RemovedReport,BuildMail);
 
         if (flagBuildOrderList) {
-            System.out.println();
-            if (fullLoaderFlag) {
-                System.out.println("Рекомендуемый порядок установки ЗНИ:");
-                BuildMail.add(System.lineSeparator() + "Рекомендуемый порядок установки ЗНИ:" + System.lineSeparator());
-            }
-            else {
-                System.out.println("Рекомендуемый порядок установки новых и измененнных ЗНИ:");
-                BuildMail.add(System.lineSeparator() + "Рекомендуемый порядок установки новых и измененнных ЗНИ:" + System.lineSeparator());
-            }
-
-            System.out.println(BuildListReport);
-            BuildMail.add(BuildListReport);
+            if (fullLoaderFlag)
+                PrintReport("Рекомендуемый порядок установки ЗНИ:",BuildListReport,BuildMail );
+            else
+                PrintReport("Рекомендуемый порядок установки новых и измененнных ЗНИ:", BuildListReport, BuildMail);
         }
 
-        System.out.println();
-        System.out.println("Новые ЗНИ:");
-        System.out.println(NewZNIReport);
-        BuildMail.add(System.lineSeparator()+"Новые ЗНИ:"+System.lineSeparator()+NewZNIReport);
+        PrintReport("Данные ЗНИ будут допущены к внедрению при снятии признака НТ:",needLoadRequimentCancelReport,BuildMail);
+        PrintReport("В связи с обновлением версии по данным ЗНИ владельцаи продуктов  необходимо получить от ЦСПС акцепт на зачет результатов НТ по версиям, переданным на НТ ранее",needLoadRequimentRequestReport,BuildMail);
 
-        System.out.println();
-        System.out.println("Новыe версии ЗНИ:");
-        System.out.println(NewVersionReport);
-        BuildMail.add(System.lineSeparator()+"Новыe версии ЗНИ:"+System.lineSeparator()+NewVersionReport);
+        PrintReport("Новые ЗНИ:",NewZNIReport,BuildMail);
+        PrintReport("Новыe версии ЗНИ:",NewVersionReport,BuildMail);
 
-        if (!ChangeOnlyInstallReport.isEmpty()) {
-            System.out.println();
-            System.out.println("Новыe версии ЗНИ без изменений в хранилищах и pck:");
-            System.out.println(ChangeOnlyInstallReport);
-            BuildMail.add(System.lineSeparator()+"Новыe версии ЗНИ без изменений в хранилищах и pck:"+System.lineSeparator()+ChangeOnlyInstallReport);
-        }
-
-        System.out.println();
-        System.out.println("Без изменений:");
-        System.out.println(WithoutChangeReport);
-        BuildMail.add(System.lineSeparator()+"Без изменений:"+System.lineSeparator()+WithoutChangeReport);
+        if (!ChangeOnlyInstallReport.isEmpty())
+            PrintReport("Новыe версии ЗНИ без изменений в хранилищах и pck:",ChangeOnlyInstallReport,BuildMail);
 
 
+        PrintReport("Без изменений:",WithoutChangeReport,BuildMail);
 
         if (debugFlag) {
             System.out.println();
@@ -426,6 +413,20 @@ public class Main {
 
     }
 
+    // Показать отчет на консоли
+    public static void PrintReport(String reportHeader, String reportStirng, ArrayList<String> reportBody)
+    {
+        if (reportStirng.length()>0)
+        {
+            System.out.println();
+            System.out.println(reportHeader);
+            System.out.println(reportStirng);
+            reportBody.add(System.lineSeparator()+reportHeader+System.lineSeparator()+reportStirng);
+        }
+
+    }
+
+    // Записать в фвйл строки с логированием действий
     public static void WriteFile(String filePath, String fileName, ArrayList<String> fileBody)
     {
         System.out.print("Write file "+fileName+" ... ");
@@ -433,6 +434,7 @@ public class Main {
         System.out.println("Done");
     }
 
+    // Добавить в список разделенный запятыми строку
     public static String MakeComaSeparatedList(String list, String item)
     {
         String retval;
@@ -448,5 +450,4 @@ public class Main {
 
         return retval;
     }
-
 }
