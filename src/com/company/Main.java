@@ -161,6 +161,7 @@ public class Main {
         }
         System.out.println("Done");
 
+        // Переменные для текстовых отчетов
         String NewZNIReport="";
         String NewVersionReport="";
         String WithoutChangeReport="";
@@ -174,6 +175,7 @@ public class Main {
         String needLoadRequimentRequestReport="";
         String needLoadRequimentCancelReport="";
 
+        // Переменные для генерации файлов (один элемент- одна строка)
         ArrayList<String> ChangeListNotes=new ArrayList();;
         ArrayList<String> BuildURLList=new ArrayList<>();
         ArrayList<String> BuildMail=new ArrayList<>();
@@ -203,9 +205,10 @@ public class Main {
         ArrayList<String> HasErrorRemoveCmd=new ArrayList();
         Date Now = new Date();
         SimpleDateFormat DateFormatter = new SimpleDateFormat("YYY-MM-dd");
-        String ErrDistribStoragePath=Paths.get(NewDistribPath).getParent().toString()+File.separator+"ERR_BUILD_"+DateFormatter.format(Now).toString();
+        String ErrorDistributiveParrebtPath=Paths.get(NewDistribPath).getParent().toString();
+        String ErrDistribStoragePath=ErrorDistributiveParrebtPath+File.separator+"ERR_BUILD_"+DateFormatter.format(Now).toString();
 
-        HasErrorRemoveCmd.add("@ECHO OFF");
+
         HasErrorRemoveCmd.add("RD /S /Q "+ErrDistribStoragePath);
         HasErrorRemoveCmd.add("MD "+ErrDistribStoragePath);
 
@@ -271,17 +274,20 @@ public class Main {
                     };
                     break;
                 case hasError:
-                    HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    if (releaseItem!=null && !releaseItem.getAlsoReleasedList().isEmpty())
+                        HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItem.getAlsoReleasedListString());
+                    HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItem.getZNI());
+                    HasErrorRemoveCmd.add("MOVE /Y "+ErrorDistributiveParrebtPath+File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                     break;
                 case errCicleLinks:
                     HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + releaseItemList +" сожержит цикличные ссылки в порядке установке с ЗНИ "+Item.getBuildError();
-                    HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    HasErrorRemoveCmd.add("MOVE /Y "+ErrorDistributiveParrebtPath+File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                 case errBuildLinks:
                     HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + releaseItemList +" ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ";
-                    HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    HasErrorRemoveCmd.add("MOVE /Y "+ErrorDistributiveParrebtPath+File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
                 case issueMismatch:
                     issueMismatchReport=MakeComaSeparatedList(issueMismatchReport,releaseItemList);
-                    HasErrorRemoveCmd.add("MOVE /Y "+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    HasErrorRemoveCmd.add("MOVE /Y "+ErrorDistributiveParrebtPath+File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
             }
 
             // Проверим на требование к НТ и сформируем описание ЗНИ из ЦУПа
@@ -292,17 +298,14 @@ public class Main {
                     switch (Item.getType()) {
                         case newZNI:
                             needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,releaseItem.getZNI());
-                        break;
-                        case withoutChange:
-                            needLoadRequimentRequestReport=MakeComaSeparatedList(needLoadRequimentRequestReport,releaseItem.getZNI());
-                        break;
+                            break;
                         case newVersion:
-                            needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,releaseItem.getZNI());
-                        break;
+                            needLoadRequimentRequestReport=MakeComaSeparatedList(needLoadRequimentRequestReport,releaseItem.getZNI());
+                            break;
                     }
                 }
             else
-                System.out.print("Error ZNI description not found "+releaseItem.getZNI());
+                System.out.print(System.lineSeparator()+"*** Error ZNI description not found "+releaseItem.getZNI());
 
             if (!releaseItem.getAlsoReleasedList().isEmpty())
             {
@@ -316,32 +319,32 @@ public class Main {
                                needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,AlsoeleasedZNI);
                                break;
                            case newVersion:
-                               needLoadRequimentCancelReport=MakeComaSeparatedList(needLoadRequimentCancelReport,AlsoeleasedZNI);
+                               needLoadRequimentRequestReport=MakeComaSeparatedList(needLoadRequimentRequestReport,AlsoeleasedZNI);
                                break;
                        }
                    }
                    else
-                       System.out.print("Error ZNI description not found "+AlsoeleasedZNI);
+                       System.out.print(System.lineSeparator()+"*** Error ZNI description not found "+AlsoeleasedZNI);
                }
             }
-
         }
+        HasErrorRemoveCmd.add("EXIT /B");
 
-        // Сформируем список ошибочных ЗНИ
-        for(String errReliseItem : ReleaseErr.ReleaseErrorsItems.keySet())
-        {
-            ReleaseItem releaseItem=ReleaseNew.getZNI(errReliseItem); // Список ЗНИ реализованных в дистрибутиве
-
-            if (releaseItem!=null && !releaseItem.getAlsoReleasedList().isEmpty())
-                HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItem.getAlsoReleasedListString());
-            HasErrorReport=MakeComaSeparatedList(HasErrorReport,errReliseItem);
-        };
-
+        // Напечатаем ошибки внедрениия
         PrintReport("ЗНИ с ошибками пересечений не включены в сборку:",HasErrorReport, BuildMail);
         PrintReport("ЗНИ не включены в сборку тк номер ЗНИ install.txt не соответствует Jira:",issueMismatchReport,BuildMail);;
         PrintReport("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:",HasLinkErrorReport,BuildMail);
-        PrintReport("ЗНИ удаленные из сборки:",RemovedReport,BuildMail);
+        PrintReport("Не попали в этот билд, но присутствовали в прошлом",RemovedReport,BuildMail);
 
+        // Подготовим письмо о ошибках
+        ArrayList<String> ErrMail=new ArrayList<String>();
+
+        PrintReport("ЗНИ не включены в сборку тк номер ЗНИ install.txt не соответствует Jira:",issueMismatchReport,ErrMail);;
+        PrintReport("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:",HasLinkErrorReport,ErrMail);
+
+        ErrMail.addAll(ReleaseErr.getMailBody());
+
+        // Выведем порядок установки
         if (flagBuildOrderList) {
             if (fullLoaderFlag)
                 PrintReport("Рекомендуемый порядок установки ЗНИ:",BuildListReport,BuildMail );
@@ -349,6 +352,7 @@ public class Main {
                 PrintReport("Рекомендуемый порядок установки новых и измененных ЗНИ:", BuildListReport, BuildMail);
         }
 
+        // Запросы по НТ
         PrintReport("Данные ЗНИ будут допущены к внедрению при снятии признака НТ:",needLoadRequimentCancelReport,BuildMail);
         PrintReport("В связи с обновлением версии по данным ЗНИ владельцам продуктов  необходимо получить от ЦСПС акцепт на зачет результатов НТ по версиям, переданным на НТ ранее",needLoadRequimentRequestReport,BuildMail);
 
@@ -360,6 +364,8 @@ public class Main {
 
 
         PrintReport("Без изменений:",WithoutChangeReport,BuildMail);
+
+
 
         if (debugFlag) {
             System.out.println();
@@ -376,7 +382,7 @@ public class Main {
 
             System.out.println();
             System.out.println("Письмо о ошибках:");
-            ReleaseErr.getMailBody().forEach(System.out::println);
+            ErrMail.forEach(System.out::println);
         }
 
         System.out.println();
@@ -386,7 +392,8 @@ public class Main {
         WriteFile(NewDistribPath, "makeBuild.bat", HasErrorRemoveCmd);
         WriteFile(NewDistribPath, "BuildNotes.txt", ChangeListNotes);
         WriteFile(NewDistribPath, "BuildURLList.csv", BuildURLList);
-        WriteFile(NewDistribPath, "ODMail.txt", ReleaseErr.getMailBody());
+
+        WriteFile(NewDistribPath, "ODMail.txt", ErrMail);
         WriteFile(NewDistribPath, "BuildMail.txt", BuildMail);
 
         ArrayList<String> JiraIssues = new ArrayList<>();
@@ -396,18 +403,39 @@ public class Main {
 
         System.out.print("Generate Emails List ...");
         ArrayList<String> txtAddressList=new ArrayList<>();
+
+        // Добавим адреса с релизом
         for(String ErrItem : ReleaseErr.getItems()) {
 
-            if (ErrItem.length() == 0) {
+            if (ErrItem.length() != 0) {
                 ReleaseItem RelItem = ReleaseNew.getZNI(ErrItem);
                 if (RelItem != null) {
                     RelItem.getEmails().stream().filter(s -> (s != null)).forEach(s -> txtAddressList.add(s + ";"));
-                } else System.out.println(ErrItem + " not found email address");
+                } else System.out.println(System.lineSeparator()+"*** "+ErrItem + " not found email address");
+            }
+        }
+        // Добавим адреса с ошибками построения релиза
+        for(BuildListItem Item : BuildItemsList.values())
+        {
+            if (Item.getType()==errBuildLinks || Item.getType()==errCicleLinks || Item.getType()==issueMismatch)
+            {
+                ReleaseItem RelItem = Item.getItem();
+                RelItem.getEmails().stream().filter(s -> (s != null)).forEach(s -> txtAddressList.add(s + ";"));
             }
         }
         System.out.println("Done");
+
+        if (debugFlag) System.out.println(txtAddressList.toString());
+
         WriteFile(NewDistribPath, "ODAddress.txt", txtAddressList);
 
+    }
+
+    // Подготовить отчет по списку файлов
+    public static void MakeMailBody(String reportHeader, String reportStirng, ArrayList<String> mailBody)
+    {
+        if (reportStirng.length()>0)
+            mailBody.add(System.lineSeparator()+reportHeader+System.lineSeparator()+reportStirng);
     }
 
     // Показать отчет на консоли
@@ -418,9 +446,8 @@ public class Main {
             System.out.println();
             System.out.println(reportHeader);
             System.out.println(reportStirng);
-            reportBody.add(System.lineSeparator()+reportHeader+System.lineSeparator()+reportStirng);
+            MakeMailBody(reportHeader,reportStirng,reportBody);
         }
-
     }
 
     // Записать в фвйл строки с логированием действий
@@ -430,6 +457,7 @@ public class Main {
         FileProvider.SaveFile(Paths.get(filePath,fileName).toString(), fileBody);
         System.out.println("Done");
     }
+
 
     // Добавить в список разделенный запятыми строку
     public static String MakeComaSeparatedList(String list, String item)
@@ -444,7 +472,6 @@ public class Main {
         else {
             retval=list+","+item;
         }
-
         return retval;
     }
 }
