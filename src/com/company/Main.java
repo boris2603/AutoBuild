@@ -202,7 +202,8 @@ public class Main {
         System.out.print("Release distribution comparison ...");
 
         // Подготовить имена каталогов для батн релиза
-        ArrayList<String> HasErrorRemoveCmd=new ArrayList();
+        ArrayList<String> HasErrorRemoveCmd=new ArrayList<>();
+
         Date Now = new Date();
         SimpleDateFormat DateFormatter = new SimpleDateFormat("YYY-MM-dd");
         String ErrorDistributiveParrebtPath=Paths.get(NewDistribPath).getParent().toString();
@@ -217,14 +218,6 @@ public class Main {
         BuildBOrderList BuildOrder = new BuildBOrderList(BuildItemsList);
         BuildOrder.CompareRelease(ReleaseOld,NewDistribPath,OldDistribPath);
         System.out.println("Done");
-
-        boolean flagBuildOrderList = true;
-        if (flagBuildOrderList) {
-            System.out.println();
-            System.out.print("Generate order list ...");
-            BuildListReport = BuildOrder.getBuildList(fullLoaderFlag);
-            System.out.println("Done");
-        }
 
 
         System.out.println();
@@ -251,43 +244,49 @@ public class Main {
             switch (Item.getType()) {
                 case newZNI:
                     NewZNIReport = NewZNIReport + System.lineSeparator() + ReportString;
-                    BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
-                    JiraIssueReport=MakeComaSeparatedList(JiraIssueReport,releaseItem.getJiraIssue());
+                    BuildURLList.add(releaseItem.getZNI() + "," + releaseItem.getJiraIssue() + "," + releaseItem.getULR());
+                    JiraIssueReport = MakeComaSeparatedList(JiraIssueReport, releaseItem.getJiraIssue());
                     break;
                 case newVersion:
                     NewVersionReport = NewVersionReport + System.lineSeparator() + ReportString;
-                    BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
-                    JiraIssueReport=MakeComaSeparatedList(JiraIssueReport,releaseItem.getJiraIssue());
+                    BuildURLList.add(releaseItem.getZNI() + "," + releaseItem.getJiraIssue() + "," + releaseItem.getULR());
+                    JiraIssueReport = MakeComaSeparatedList(JiraIssueReport, releaseItem.getJiraIssue());
                     break;
                 case withoutChange:
                     WithoutChangeReport = WithoutChangeReport + System.lineSeparator() + ReportString;
-                    JiraIssueReport=MakeComaSeparatedList(JiraIssueReport,releaseItem.getJiraIssue());
+                    JiraIssueReport = MakeComaSeparatedList(JiraIssueReport, releaseItem.getJiraIssue());
                     if (fullLoaderFlag) {
-                        BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
-                    };
+                        BuildURLList.add(releaseItem.getZNI() + "," + releaseItem.getJiraIssue() + "," + releaseItem.getULR());
+                    }
+                    ;
                     break;
                 case changeOnlyInstall:
                     ChangeOnlyInstallReport = ChangeOnlyInstallReport + System.lineSeparator() + ReportString;
-                    JiraIssueReport=MakeComaSeparatedList(JiraIssueReport,releaseItem.getJiraIssue());
+                    JiraIssueReport = MakeComaSeparatedList(JiraIssueReport, releaseItem.getJiraIssue());
                     if (fullLoaderFlag) {
-                        BuildURLList.add(releaseItem.getZNI()+","+releaseItem.getJiraIssue()+","+releaseItem.getULR());
-                    };
+                        BuildURLList.add(releaseItem.getZNI() + "," + releaseItem.getJiraIssue() + "," + releaseItem.getULR());
+                    }
+                    ;
                     break;
                 case hasError:
-                    if (releaseItem!=null && !releaseItem.getAlsoReleasedList().isEmpty())
-                        HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItem.getAlsoReleasedListString());
-                    HasErrorReport=MakeComaSeparatedList(HasErrorReport,releaseItem.getZNI());
-                    HasErrorRemoveCmd.add("MOVE /Y "+ErrorDistributiveParrebtPath+File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    if (releaseItem != null && !releaseItem.getAlsoReleasedList().isEmpty())
+                        HasErrorReport = MakeComaSeparatedList(HasErrorReport, releaseItem.getAlsoReleasedListString());
+                    HasErrorReport = MakeComaSeparatedList(HasErrorReport, releaseItem.getZNI());
+                    if (!HasErrorRemoveCmd.contains("MOVE /Y " + ErrorDistributiveParrebtPath + File.separator + releaseItem.getDistributive() + ".* " + ErrDistribStoragePath))
+                        HasErrorRemoveCmd.add("MOVE /Y " + ErrorDistributiveParrebtPath + File.separator + releaseItem.getDistributive() + ".* " + ErrDistribStoragePath);
                     break;
                 case errCicleLinks:
-                    HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + releaseItemList +" сожержит цикличные ссылки в порядке установке с ЗНИ "+Item.getBuildError();
-                    HasErrorRemoveCmd.add("MOVE /Y "+ErrorDistributiveParrebtPath+File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    HasLinkErrorReport = HasLinkErrorReport + System.lineSeparator() + releaseItemList + " сожержит цикличные ссылки в порядке установке с ЗНИ " + Item.getBuildError();
+                    if (!HasErrorRemoveCmd.contains("MOVE /Y " + ErrorDistributiveParrebtPath + File.separator + releaseItem.getDistributive() + ".* " + ErrDistribStoragePath))
+                        HasErrorRemoveCmd.add("MOVE /Y " + ErrorDistributiveParrebtPath + File.separator + releaseItem.getDistributive() + ".* " + ErrDistribStoragePath);
                 case errBuildLinks:
-                    HasLinkErrorReport=HasLinkErrorReport + System.lineSeparator() + releaseItemList +" ссылается на ЗНИ "+Item.getBuildError()+" которой нет в сборке ";
-                    HasErrorRemoveCmd.add("MOVE /Y "+ErrorDistributiveParrebtPath+File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    HasLinkErrorReport = HasLinkErrorReport + System.lineSeparator() + releaseItemList + " ссылается на ЗНИ " + Item.getBuildError() + " которой нет в сборке ";
+                    if (!HasErrorRemoveCmd.contains("MOVE /Y " + ErrorDistributiveParrebtPath + File.separator + releaseItem.getDistributive() + ".* " + ErrDistribStoragePath))
+                        HasErrorRemoveCmd.add("MOVE /Y " + ErrorDistributiveParrebtPath + File.separator + releaseItem.getDistributive() + ".* " + ErrDistribStoragePath);
                 case issueMismatch:
-                    issueMismatchReport=MakeComaSeparatedList(issueMismatchReport,releaseItemList);
-                    HasErrorRemoveCmd.add("MOVE /Y "+ErrorDistributiveParrebtPath+File.separator+releaseItem.getDistributive()+".* "+ErrDistribStoragePath);
+                    issueMismatchReport = MakeComaSeparatedList(issueMismatchReport, releaseItemList);
+                    if (!HasErrorRemoveCmd.contains("MOVE /Y " + ErrorDistributiveParrebtPath + File.separator + releaseItem.getDistributive() + ".* " + ErrDistribStoragePath))
+                        HasErrorRemoveCmd.add("MOVE /Y " + ErrorDistributiveParrebtPath + File.separator + releaseItem.getDistributive() + ".* " + ErrDistribStoragePath);
             }
 
             // Проверим на требование к НТ и сформируем описание ЗНИ из ЦУПа
@@ -328,6 +327,17 @@ public class Main {
                }
             }
         }
+
+        // Сгененрируем список в порядке установки объектов
+        boolean flagBuildOrderList = true;
+        if (flagBuildOrderList) {
+            System.out.println();
+            System.out.print("Generate order list ...");
+            BuildListReport = BuildOrder.getBuildList(fullLoaderFlag);
+            System.out.println("Done");
+        }
+
+
         HasErrorRemoveCmd.add("EXIT /B");
 
         // Напечатаем ошибки внедрениия
@@ -339,7 +349,6 @@ public class Main {
         // Подготовим письмо о ошибках
         ArrayList<String> ErrMail=new ArrayList<String>();
 
-        PrintReport("ЗНИ не включены в сборку тк номер ЗНИ install.txt не соответствует Jira:",issueMismatchReport,ErrMail);;
         PrintReport("ЗНИ не включены в сборку т.к. зависят от ЗНИ с ошибками:",HasLinkErrorReport,ErrMail);
 
         ErrMail.addAll(ReleaseErr.getMailBody());
@@ -387,7 +396,6 @@ public class Main {
 
         System.out.println();
         System.out.println("Generate files ...");
-
 
         WriteFile(NewDistribPath, "makeBuild.bat", HasErrorRemoveCmd);
         WriteFile(NewDistribPath, "BuildNotes.txt", ChangeListNotes);

@@ -18,7 +18,7 @@ public class BuildBOrderList {
     public String getBuildList(boolean fullLoaderFlag)
     {
         String BOListReport="";
-
+        ArrayList<String> BOArrayClear=new ArrayList<>();
 
 
         for(BuildListItem value : release.values())
@@ -34,7 +34,15 @@ public class BuildBOrderList {
                             BOArray.addAll(AddReleaseItem(value.getItem().getZNI(),fullLoaderFlag)); }
         }
 
+        // Очистим массив от 2х записей о ЗНИ
         for (String item : BOArray)
+        {
+            if (!BOArrayClear.contains(item))
+                BOArrayClear.add(item);
+        }
+
+        // Генерация отчета со списком установки
+        for (String item : BOArrayClear)
         {
             if (BOListReport.length()==0)
                 BOListReport=item;
