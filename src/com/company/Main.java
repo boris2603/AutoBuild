@@ -210,7 +210,7 @@ public class Main {
         String ErrDistribStoragePath=ErrorDistributiveParrebtPath+File.separator+"ERR_BUILD_"+DateFormatter.format(Now).toString();
 
 
-        HasErrorRemoveCmd.add("RD /S /Q "+ErrDistribStoragePath);
+        HasErrorRemoveCmd.add("RD /S /Q "+ErrDistribStoragePath+" 2>&1 1>nul");
         HasErrorRemoveCmd.add("MD "+ErrDistribStoragePath);
 
 
