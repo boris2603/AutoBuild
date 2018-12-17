@@ -8,7 +8,7 @@ import java.util.function.Consumer;
 
 
 public class ReleaseObjects {
-    public HashMap<String,ReleaseItem> ReleaseItems;
+    private HashMap<String,ReleaseItem> ReleaseItems;
 
 
     ReleaseObjects(String ReleasePath, String ReleaseURLPath)
@@ -17,6 +17,15 @@ public class ReleaseObjects {
         ParceReleaseObjects(FileProvider.LoadFile(ReleasePath));
         ParceURL(FileProvider.LoadFile(ReleaseURLPath));
     }
+
+    public Collection<ReleaseItem> getITems() {return ReleaseItems.values(); };
+
+    public boolean containsZNI(String ZNI) {return ReleaseItems.containsKey(ZNI);};
+
+    public ReleaseItem getZNI(String ZNI)
+    {
+        return ReleaseItems.get(ZNI);
+    };
 
 
     // Проверяем что ЗНИ есть в релизе
@@ -65,35 +74,37 @@ public class ReleaseObjects {
         ReleaseItems.clear();
 
         for(String line : lines) {
-            String[] items = line.split(",");
+            if (line.charAt(0)!='#') {
+                String[] items = line.split(",");
 
-            if (items.length > 0) {
-                int idxGlobal=3;
-                ReleaseItem Item = new ReleaseItem(items[0], items[1], items[2]);
+                if (items.length > 0) {
+                    int idxGlobal = 3;
+                    ReleaseItem Item = new ReleaseItem(items[0], items[1], items[2]);
 
-                // Загрузим список электронной почты
-                for (int idx = idxGlobal; idx < items.length && !items[idx].equals("#"); idx++) {
-                    Item.AddEmail(items[idx]);
-                    idxGlobal=idx;
+                    // Загрузим список электронной почты
+                    for (int idx = idxGlobal; idx < items.length && !items[idx].equals("#"); idx++) {
+                        Item.AddEmail(items[idx]);
+                        idxGlobal = idx;
+                    }
+                    if ((items.length - idxGlobal) > 1 && items[idxGlobal + 1].equals("#"))
+                        idxGlobal = idxGlobal + 2;
+                    else idxGlobal++;
+
+                    // Загрузим список зависимых ЗНИ
+                    for (int idx = idxGlobal; idx < items.length && !items[idx].equals("%"); idx++) {
+                        Item.AddDepend(items[idx]);
+                        idxGlobal = idx;
+                    }
+                    if ((items.length - idxGlobal) > 1 && items[idxGlobal + 1].equals("%"))
+                        idxGlobal = idxGlobal + 2;
+                    else idxGlobal++;
+
+                    // Загрузим список ЗНИ реализованных совместно
+                    for (int idx = idxGlobal; idx < items.length; idx++) {
+                        Item.AddAlsoReleased(items[idx]);
+                    }
+                    ReleaseItems.put(Item.getZNI(), Item);
                 }
-                if ((items.length-idxGlobal)>1 && items[idxGlobal+1].equals("#"))
-                    idxGlobal=idxGlobal+2;
-                else idxGlobal++;
-
-                // Загрузим список зависимых ЗНИ
-                for (int idx = idxGlobal; idx < items.length && !items[idx].equals("%"); idx++) {
-                    Item.AddDepend(items[idx]);
-                    idxGlobal=idx;
-                }
-                if ((items.length-idxGlobal)>1  && items[idxGlobal+1].equals("%"))
-                    idxGlobal=idxGlobal+2;
-                else idxGlobal++;
-
-                // Загрузим список ЗНИ реализованных совместно
-                for (int idx = idxGlobal; idx < items.length; idx++) {
-                    Item.AddAlsoReleased(items[idx]);
-                }
-                ReleaseItems.put(Item.getZNI(),Item);
             }
         }
 
